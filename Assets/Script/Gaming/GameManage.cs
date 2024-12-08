@@ -73,7 +73,7 @@ public class GameManager : NetworkBehaviour
             networkCards[i] = new NetworkedCardData
             {
                 cardName = $"{deckData.deckName} Card {i + 1}",
-                imagePath = $"{GameDeckDatabase.DECK_PATH_PREFIX}{deckData.deckName}/card_{i}"
+                imagePath = $"{deckData.deck_path}/{i}"
             };
         }
 

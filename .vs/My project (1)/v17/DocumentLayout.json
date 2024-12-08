@@ -3,7 +3,19 @@
   "WorkspaceRootPath": "C:\\Users\\death\\My project (1)\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|c:\\users\\death\\my project (1)\\assets\\script\\gaming\\gamemanage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|c:\\users\\death\\my project (1)\\assets\\datas\\deckdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\datas\\deckdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\datas\\networkcarddata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\datas\\networkcarddata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\deckselector.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\deckselector.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\gamemanage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\gamemanage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
@@ -34,11 +46,48 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 1,
+              "Title": "NetworkCardData.cs",
+              "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\datas\\NetworkCardData.cs",
+              "RelativeDocumentMoniker": "Assets\\datas\\NetworkCardData.cs",
+              "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\datas\\NetworkCardData.cs",
+              "RelativeToolTip": "Assets\\datas\\NetworkCardData.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-12-08T14:30:21.23Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "deckdata.cs",
+              "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\datas\\deckdata.cs",
+              "RelativeDocumentMoniker": "Assets\\datas\\deckdata.cs",
+              "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\datas\\deckdata.cs",
+              "RelativeToolTip": "Assets\\datas\\deckdata.cs",
+              "ViewState": "AQIAAAsAAAAAAAAAAAAxwCEAAAA6AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-12-08T14:30:20.356Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DeckSelector.cs",
+              "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\DeckSelector.cs",
+              "RelativeDocumentMoniker": "Assets\\Script\\DeckSelector.cs",
+              "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\DeckSelector.cs",
+              "RelativeToolTip": "Assets\\Script\\DeckSelector.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-12-08T14:30:17.126Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
               "Title": "NetworkManager.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\NetworkManager.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\NetworkManager.cs",
@@ -50,7 +99,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 7,
               "Title": "NetworkPlayerInfo.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\NetworkPlayerInfo.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\NetworkPlayerInfo.cs",
@@ -62,7 +111,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 5,
               "Title": "CardInteraction.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\CardInteraction.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\CardInteraction.cs",
@@ -74,20 +123,19 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 3,
               "Title": "GameManage.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\GameManage.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\GameManage.cs",
               "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\GameManage.cs",
               "RelativeToolTip": "Assets\\Script\\Gaming\\GameManage.cs",
-              "ViewState": "AQIAACEAAAAAAAAAAAAAADIAAAAJAAAA",
+              "ViewState": "AQIAAB4AAAAAAAAAAIBJwDIAAAAJAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-12-07T12:56:01.075Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-12-07T12:56:01.075Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 8,
               "Title": "PlayerStatus.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\PlayerStatus.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\PlayerStatus.cs",
@@ -99,7 +147,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 4,
               "Title": "CardonHand.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\CardonHand.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\CardonHand.cs",
