@@ -26,6 +26,8 @@ public class PlayerMovement : NetworkBehaviour
         {
             _jumpPressed = true;
         }
+
+        //Debug.Log($"Camera pos: {Camera.transform.position}");
     }
 
     public override void FixedUpdateNetwork()
@@ -66,6 +68,9 @@ public class PlayerMovement : NetworkBehaviour
         {
             Camera = Camera.main;
             Camera.GetComponent<FirstPersonCamera>().Target = transform;
+
+
+            //Debug.Log("IN");
         }
     }
 }

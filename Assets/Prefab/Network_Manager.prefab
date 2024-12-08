@@ -10,9 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 5018841323876981009}
   - component: {fileID: 9215004599396134931}
-  - component: {fileID: 6287983228662548742}
+  - component: {fileID: 7937704772368446591}
   m_Layer: 0
-  m_Name: Manager
+  m_Name: Network_Manager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -49,9 +49,8 @@ MonoBehaviour:
   ObjectInterest: 1
   Flags: 786433
   NestedObjects: []
-  NetworkedBehaviours:
-  - {fileID: 6287983228662548742}
---- !u!114 &6287983228662548742
+  NetworkedBehaviours: []
+--- !u!114 &7937704772368446591
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -60,6 +59,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 5886058793865500986}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0d1adb7efb2f35c449868b030981c427, type: 3}
+  m_Script: {fileID: 11500000, guid: 9160465480d73034d9eab1aa8c9cf1ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  PlayerPrefab: {fileID: 0}
+  gameDeckManagerPrefab:
+    RawGuidValue: 4fc0c775a4b2a0d40b53e7bb298ec38f

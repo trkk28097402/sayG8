@@ -1,14 +1,28 @@
 using Fusion;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class GameManager : NetworkBehaviour
 {
-    [SerializeField] private CardonHand cardHand;
+    [Networked]
+    private NetworkDictionary<PlayerRef, NetworkId> NetworkedPlayerCards { get; }
+
+    private Dictionary<PlayerRef, CardOnHand> localPlayerCards = new Dictionary<PlayerRef, CardOnHand>();
     private GameDeckDatabase deckDatabase;
+
+    public const int MAX_PLAYERS = 2;
 
     private void Awake()
     {
-        deckDatabase = new GameDeckDatabase();
+        InitializeDeckDatabase();
+    }
+
+    private void InitializeDeckDatabase()
+    {
+        if (deckDatabase == null)
+        {
+            deckDatabase = new GameDeckDatabase();
+        }
     }
 
     public override void Spawned()
@@ -19,22 +33,32 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    private void InitializeGame()
+    public void RegisterPlayerCard(PlayerRef player, CardOnHand cardHand)
     {
-        foreach (var player in Runner.ActivePlayers)
+        // 移除 HasStateAuthority 檢查
+        if (!NetworkedPlayerCards.ContainsKey(player))
         {
+            localPlayerCards[player] = cardHand;
+            NetworkedPlayerCards.Add(player, cardHand.Object.Id);
+
             int deckId = GameDeckManager.Instance.GetPlayerDeck(player);
-            deckId = 0;
+            //deckId = 0; // 測試用
             if (deckId != -1)
             {
                 SetupPlayerDeck(player, deckId);
+                Debug.Log($"已註冊玩家 {player} 的卡組");
             }
         }
     }
 
     private void SetupPlayerDeck(PlayerRef player, int deckId)
     {
-        // 從您的數據庫獲取卡組資料
+        if (!localPlayerCards.TryGetValue(player, out CardOnHand cardHand))
+        {
+            Debug.LogError($"找不到玩家 {player} 的 CardOnHand");
+            return;
+        }
+
         GameDeckData deckData = deckDatabase.GetDeckById(deckId);
         if (deckData == null)
         {
@@ -42,47 +66,59 @@ public class GameManager : NetworkBehaviour
             return;
         }
 
-        // 根據卡組資料創建測試卡片
-        // 這裡假設我們先創建5張牌作為起始手牌
-        int initialHandSize = Mathf.Min(5, deckData.cardCount);
-        CardData[] cards = new CardData[initialHandSize];
-
+        int initialHandSize = 5;
+        NetworkedCardData[] networkCards = new NetworkedCardData[initialHandSize];
         for (int i = 0; i < initialHandSize; i++)
         {
-            cards[i] = new CardData
+            networkCards[i] = new NetworkedCardData
             {
                 cardName = $"{deckData.deckName} Card {i + 1}",
-                cardImage = Resources.Load<Sprite>($"{GameDeckDatabase.DECK_PATH_PREFIX}{deckData.deckName}/card_{i}")
-                // 如果您有其他卡片屬性，可以在這裡設置
+                imagePath = $"{GameDeckDatabase.DECK_PATH_PREFIX}{deckData.deckName}/card_{i}"
             };
         }
 
-        // 如果這是本地玩家，設置他的手牌
-        if (player == Runner.LocalPlayer)
-        {
-            cardHand.SetupCard(cards);
-            Debug.Log($"設置玩家 {player} 的卡組：{deckData.deckName}");
-        }
+        cardHand.SetupCards(networkCards);
+        Debug.Log($"設置玩家 {player} 的卡組：{deckData.deckName}");
     }
 
-    // 用於測試的方法
-    public void SetupTestDeck(int deckId)
+    private void InitializeGame()
     {
-        GameDeckData testDeck = deckDatabase.GetDeckById(deckId);
-        if (testDeck == null) return;
-
-        int testHandSize = Mathf.Min(5, testDeck.cardCount);
-        CardData[] testCards = new CardData[testHandSize];
-
-        for (int i = 0; i < testHandSize; i++)
-        {
-            testCards[i] = new CardData
-            {
-                cardName = $"{testDeck.deckName} Test Card {i + 1}",
-                cardImage = null  // 或載入預設圖片
-            };
-        }
-
-        cardHand.SetupCard(testCards);
+        // 清空現有的玩家資料
+        NetworkedPlayerCards.Clear();
+        localPlayerCards.Clear();
     }
+
+    private void StartGame()
+    {
+        if (!Object.HasStateAuthority) return;
+
+        Debug.Log("Game start");
+    }
+
+    // 獲取對手的CardOnHand
+    public CardOnHand GetOpponentCard(PlayerRef currentPlayer)
+    {
+        foreach (var kvp in localPlayerCards)
+        {
+            if (kvp.Key != currentPlayer)
+            {
+                return kvp.Value;
+            }
+        }
+        return null;
+    }
+
+    // 處理玩家離開
+    public void PlayerLeft(PlayerRef player)
+    {
+        if (!Object.HasStateAuthority) return;
+
+        if (NetworkedPlayerCards.ContainsKey(player))
+        {
+            NetworkedPlayerCards.Remove(player);
+            localPlayerCards.Remove(player);
+            Debug.Log($"玩家 {player} 已離開遊戲");
+        }
+    }
+
 }

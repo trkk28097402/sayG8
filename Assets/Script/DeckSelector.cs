@@ -20,11 +20,16 @@ public class DeckSelector : NetworkBehaviour
 
     private void Start()
     {
+
+    }
+
+    public void Wait_Runner_Spawned() {
         runner = FindObjectOfType<NetworkRunner>();
         if (runner == null)
         {
             Debug.LogError("NetworkRunner not found in scene!");
         }
+        Debug.Log($"Runner state: {runner.State}");
 
         SetupButtons();
         LoadDeckData();
@@ -33,6 +38,7 @@ public class DeckSelector : NetworkBehaviour
 
     private void OnEnable()
     {
+        
         if (availableDecks.Count > 0)
         {
             UpdateDeckDisplay();

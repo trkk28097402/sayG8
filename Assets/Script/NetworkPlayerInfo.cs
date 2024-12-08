@@ -10,9 +10,7 @@ public class GameDeckManager : NetworkBehaviour
         {
             if (instance == null)
             {
-                var go = new GameObject("GameDeckManager");
-                instance = go.AddComponent<GameDeckManager>();
-                DontDestroyOnLoad(go);
+                Debug.LogWarning("GameDeckManager instance 不存在，請確保已經透過 NetworkRunner 生成");
             }
             return instance;
         }
@@ -26,57 +24,94 @@ public class GameDeckManager : NetworkBehaviour
 
     public override void Spawned()
     {
+        // 網路物件生成時的初始化
         if (instance == null)
         {
             instance = this;
             DontDestroyOnLoad(gameObject);
+
+            // 如果是主機端，初始化網路變數
+            if (Object.HasStateAuthority)
+            {
+                for (int i = 0; i < DeckIds.Length; i++)
+                {
+                    DeckIds.Set(i, -1);  // 設置預設值
+                }
+            }
+
+            Debug.Log("GameDeckManager 已在網路中初始化完成");
         }
         else if (instance != this)
         {
+            Debug.LogWarning("檢測到多個 GameDeckManager 實例，銷毀重複的實例");
             Destroy(gameObject);
         }
     }
 
     public void SetPlayerDeck(PlayerRef playerRef, int deckId)
     {
-        if (!Object.HasStateAuthority)
+        // 基本檢查
+        if (Object == null)
         {
-            Rpc_SetPlayerDeck(playerRef, deckId);
+            Debug.LogError("NetworkObject is null! GameDeckManager 可能還未在網路中正確初始化");
             return;
         }
 
-        if (!Runner.IsSharedModeMasterClient)
+        if (Runner == null)
         {
-            Debug.LogWarning("Only the master client can set deck IDs directly");
+            Debug.LogError("NetworkRunner is null! 網路連接可能還未建立");
             return;
         }
 
-        // 使用 PlayerId 屬性來獲取正確的索引
         int playerIndex = playerRef.PlayerId;
+        Debug.Log($"準備設置玩家 {playerIndex} 的卡組");
+
         if (playerIndex >= 0 && playerIndex < DeckIds.Length)
         {
-            DeckIds.Set(playerIndex, deckId);
-            IsInitialized.Set(playerRef, true);
-            Debug.Log($"Set deck {deckId} for player {playerRef}");
+            try
+            {
+                DeckIds.Set(playerIndex, deckId);
+                IsInitialized.Set(playerRef, true);
+                Debug.Log($"成功設置玩家 {playerRef} 的卡組為 {deckId}");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"設置卡組時發生錯誤: {e.Message}");
+            }
         }
         else
         {
-            Debug.LogError($"Invalid player index: {playerIndex}");
+            Debug.LogError($"無效的玩家索引: {playerIndex}");
         }
     }
 
-    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    public void Rpc_SetPlayerDeck(PlayerRef playerRef, int deckId)
+    /*
+    public PlayerRef GetPlayerRef()
     {
-        SetPlayerDeck(playerRef, deckId);
+        
     }
+    */
 
     public int GetPlayerDeck(PlayerRef playerRef)
     {
-        int playerIndex = playerRef.PlayerId;
-        if (playerIndex >= 0 && playerIndex < DeckIds.Length && IsInitialized.TryGet(playerRef, out var initialized) && initialized)
+        // 檢查網路物件是否已初始化
+        if (Object == null || Runner == null)
         {
-            return DeckIds[playerIndex];
+            Debug.LogWarning("無法獲取玩家卡組：網路未初始化");
+            return -1;
+        }
+
+        int playerIndex = playerRef.PlayerId;
+        if (playerIndex >= 0 && playerIndex < DeckIds.Length)
+        {
+            if (IsInitialized.TryGet(playerRef, out var initialized) && initialized)
+            {
+                return DeckIds[playerIndex];
+            }
+            else
+            {
+                Debug.LogWarning($"玩家 {playerRef} 的卡組尚未初始化");
+            }
         }
         return -1;
     }
