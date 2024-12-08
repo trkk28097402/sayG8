@@ -22,7 +22,7 @@ public class GameDeckDatabase
             id = 0,
             preview_imgae_path = "UI/Deck_preview_Image/mygo_pre",
             description = "From the famous anime \"MYGO\"",
-            deck_path = "Assets/Resources/Decks/Mygo"
+            deck_path = "Decks/Mygo"
         },
         new GameDeckData
         {
@@ -31,7 +31,7 @@ public class GameDeckDatabase
             id = 1,
             preview_imgae_path = "UI/Deck_preview_Image/spongebob_pre",
             description = "From the famous cartoon \"Sponge Bob\"",
-            deck_path = "Assets/Resources/Decks/SpongeBob"
+            deck_path = "Decks/SpongeBob"
         },
     };
 

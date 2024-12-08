@@ -432,8 +432,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 50, y: 50}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: 150, y: 150}
+  m_SizeDelta: {x: 300, y: 300}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &218536922
 MonoBehaviour:
@@ -6076,10 +6076,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_UiScaleMode: 0
+  m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 10000
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0
   m_PhysicalUnit: 3
@@ -6285,6 +6285,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1584551814}
     m_Modifications:
+    - target: {fileID: 47785922770510755, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2320476712179148790, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: cardPrefab
       value: 
@@ -6300,6 +6304,14 @@ PrefabInstance:
     - target: {fileID: 6109610690278694540, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: SortKey
       value: 1825205283
+      objectReference: {fileID: 0}
+    - target: {fileID: 6109610690278694540, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
+      propertyPath: NetworkedBehaviours.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6109610690278694540, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
+      propertyPath: NetworkedBehaviours.Array.data[1]
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 6845406186426836810, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_Pivot.x
@@ -6327,11 +6339,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6845406186426836810, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 100
+      value: 300
       objectReference: {fileID: 0}
     - target: {fileID: 6845406186426836810, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 100
+      value: 300
       objectReference: {fileID: 0}
     - target: {fileID: 6845406186426836810, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_LocalPosition.x
@@ -6367,7 +6379,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6845406186426836810, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 50
+      value: 150
       objectReference: {fileID: 0}
     - target: {fileID: 6845406186426836810, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -6381,6 +6393,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8789124587190562364, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
+      propertyPath: cardPrefab
+      value: 
+      objectReference: {fileID: 8387458903011418181, guid: 62432fa135a526245967e426e994e081, type: 3}
+    - target: {fileID: 8789124587190562364, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
+      propertyPath: deckPosition
+      value: 
+      objectReference: {fileID: 218536921}
+    - target: {fileID: 8789124587190562364, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
+      propertyPath: handContainer
+      value: 
+      objectReference: {fileID: 1864185275}
     - target: {fileID: 8997003718271116952, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_Name
       value: CardPosition_tmp
