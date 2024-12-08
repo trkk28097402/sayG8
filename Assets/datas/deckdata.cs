@@ -6,6 +6,7 @@ public class GameDeckData
     public int id;
     public string preview_imgae_path;
     public string description;
+    public string deck_path;
 }
 
 public class GameDeckDatabase
@@ -20,7 +21,8 @@ public class GameDeckDatabase
             cardCount = 40,
             id = 0,
             preview_imgae_path = "UI/Deck_preview_Image/mygo_pre",
-            description = "From the famous anime \"MYGO\""
+            description = "From the famous anime \"MYGO\"",
+            deck_path = "Assets/Resources/Decks/Mygo"
         },
         new GameDeckData
         {
@@ -29,6 +31,7 @@ public class GameDeckDatabase
             id = 1,
             preview_imgae_path = "UI/Deck_preview_Image/spongebob_pre",
             description = "From the famous cartoon \"Sponge Bob\"",
+            deck_path = "Assets/Resources/Decks/SpongeBob"
         },
     };
 
