@@ -17,9 +17,6 @@ public class GameDeckManager : NetworkBehaviour
     }
 
     [Networked, Capacity(4)]
-    private NetworkDictionary<PlayerRef, NetworkBool> IsInitialized { get; }
-
-    [Networked, Capacity(4)]
     private NetworkArray<int> DeckIds { get; }
 
     public override void Spawned()
@@ -71,7 +68,6 @@ public class GameDeckManager : NetworkBehaviour
             try
             {
                 DeckIds.Set(playerIndex, deckId);
-                IsInitialized.Set(playerRef, true);
                 Debug.Log($"成功設置玩家 {playerRef} 的卡組為 {deckId}");
             }
             catch (System.Exception e)
@@ -104,14 +100,7 @@ public class GameDeckManager : NetworkBehaviour
         int playerIndex = playerRef.PlayerId;
         if (playerIndex >= 0 && playerIndex < DeckIds.Length)
         {
-            if (IsInitialized.TryGet(playerRef, out var initialized) && initialized)
-            {
-                return DeckIds[playerIndex];
-            }
-            else
-            {
-                Debug.LogWarning($"玩家 {playerRef} 的卡組尚未初始化");
-            }
+            return DeckIds[playerIndex];
         }
         return -1;
     }

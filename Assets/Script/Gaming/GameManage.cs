@@ -1,18 +1,42 @@
-using Fusion;
-using UnityEngine;
+ï»¿using Fusion;
 using System.Collections.Generic;
+using UnityEngine;
 
 public class GameManager : NetworkBehaviour
 {
     [Networked]
-    private NetworkDictionary<PlayerRef, NetworkId> NetworkedPlayerCards { get; }
-    private Dictionary<PlayerRef, CardOnHand> localPlayerCards = new Dictionary<PlayerRef, CardOnHand>();
-    private Dictionary<PlayerRef, PlayerStatus> playerStatuses = new Dictionary<PlayerRef, PlayerStatus>();
+    public NetworkDictionary<PlayerRef, NetworkId> NetworkedPlayerCards { get; }
+    [Networked]
+    public NetworkDictionary<PlayerRef, NetworkId> NetworkedPlayerStatuses { get; }
 
+    public Dictionary<PlayerRef, CardOnHand> localPlayerCards = new Dictionary<PlayerRef, CardOnHand>();
+    public Dictionary<PlayerRef, PlayerStatus> localPlayerStatuses = new Dictionary<PlayerRef, PlayerStatus>();
+
+    [Networked]
+    private NetworkBool GameStarted { get; set; }
+
+    public static GameManager Instance { get; private set; }
     public const int MAX_PLAYERS = 2;
+
+    private NetworkRunner runner;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
 
     public override void Spawned()
     {
+        base.Spawned();
+        runner = Object.Runner;
+        Debug.Log("GameManager Spawned");
         if (Object.HasStateAuthority)
         {
             InitializeGame();
@@ -21,47 +45,92 @@ public class GameManager : NetworkBehaviour
 
     public void RegisterPlayerCard(PlayerRef player, CardOnHand cardHand)
     {
-        if (!NetworkedPlayerCards.ContainsKey(player))
+        Debug.Log($"Attempting to register player {player}");
+        if (!localPlayerCards.ContainsKey(player))
         {
             localPlayerCards[player] = cardHand;
-            NetworkedPlayerCards.Add(player, cardHand.Object.Id);
-            Debug.Log($"¤wµù¥Uª±®a {player} ªº¥dµPºŞ²z¾¹");
+            if (Object.HasStateAuthority)
+            {
+                NetworkedPlayerCards.Add(player, cardHand.Object.Id);
+            }
+            Debug.Log($"Successfully registered player {player}");
         }
     }
 
-    public void RegisterPlayerStatus(PlayerRef player, PlayerStatus status)
+    [Rpc(RpcSources.StateAuthority, RpcTargets.StateAuthority)]
+    public void Rpc_RegisterPlayerStatus(PlayerRef player, NetworkId statusId)
     {
-        if (!playerStatuses.ContainsKey(player))
-        {
-            playerStatuses[player] = status;
-            Debug.Log($"¤wµù¥Uª±®a {player} ªºª¬ºAºŞ²z¾¹");
+        Debug.Log($"Rpc_RegisterPlayerStatus called for player {player}");
 
-            // ¦pªG¨â­Óª±®a³£¤w·Ç³Æ¦n¡A¶}©l¹CÀ¸
-            //if (playerStatuses.Count == MAX_PLAYERS)
+        // å…ˆæª¢æŸ¥é€™å€‹ç©å®¶æ˜¯å¦å·²ç¶“è¨»å†Š
+        bool isNewPlayer = !NetworkedPlayerStatuses.ContainsKey(player);
+
+        if (isNewPlayer)
+        {
+            NetworkedPlayerStatuses.Add(player, statusId);
+            Debug.Log($"Added player {player} to NetworkedPlayerStatuses, current players: {NetworkedPlayerStatuses.Count}");
+
+            Rpc_RegisterLocalPlayerStatus(player, statusId);
+
+            // å¦‚æœæœ‰è¶³å¤ çš„ç©å®¶ä¸”æ˜¯æœ‰æ¬Šé™çš„å®¢æˆ¶ç«¯ï¼Œé–‹å§‹éŠæˆ²
+            if (Object.HasStateAuthority && NetworkedPlayerStatuses.Count >= MAX_PLAYERS)
             {
+                Debug.Log($"Starting game with {NetworkedPlayerStatuses.Count} players");
                 StartGame();
             }
         }
+        else
+        {
+            Debug.Log($"Player {player} was already registered");
+        }
     }
 
-    private void InitializeGame()
-    {
-        NetworkedPlayerCards.Clear();
-        localPlayerCards.Clear();
-        playerStatuses.Clear();
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_RegisterLocalPlayerStatus(PlayerRef player, NetworkId statusId) {
+
+        var status = Runner.FindObject(statusId).GetComponent<PlayerStatus>();
+        if (status != null)
+        {
+            localPlayerStatuses[player] = status;
+            Debug.Log($"Added player {player} to localPlayerStatuses, total local: {localPlayerStatuses.Count}");
+        }
     }
 
     private void StartGame()
     {
         if (!Object.HasStateAuthority) return;
 
-        // ªì©l¤Æ¨C­Óª±®aªºµP²Õ
-        foreach (var playerStatus in playerStatuses.Values)
+        Debug.Log("Host is starting the game");
+        // é€šçŸ¥æ‰€æœ‰å®¢æˆ¶ç«¯é–‹å§‹éŠæˆ²
+        Rpc_StartGameForAll();
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_StartGameForAll()
+    {
+        Debug.Log($"Player {Runner.LocalPlayer} received start game signal");
+
+        // æ¯å€‹å®¢æˆ¶ç«¯åˆå§‹åŒ–è‡ªå·±çš„ç‰Œçµ„
+        if (localPlayerStatuses.TryGetValue(Runner.LocalPlayer, out var status))
         {
-            playerStatus.Initialized_Cards();
+            Debug.Log("Start game!");
+            status.Initialized_Cards();
         }
 
-        Debug.Log("Game started - Players initialized");
+        GameStarted = true;
+    }
+
+    private void InitializeGame()
+    {
+        // åªåœ¨éŠæˆ²ä¸€é–‹å§‹æ™‚æ¸…ç©ºï¼Œè€Œä¸æ˜¯æ¯æ¬¡è¨»å†Šç©å®¶æ™‚éƒ½æ¸…ç©º
+        if (NetworkedPlayerStatuses.Count == 0)
+        {
+            Debug.Log("First time initialization");
+            NetworkedPlayerCards.Clear();
+            localPlayerCards.Clear();
+            localPlayerStatuses.Clear();
+            GameStarted = false;
+        }
     }
 
     public CardOnHand GetOpponentCard(PlayerRef currentPlayer)
@@ -78,7 +147,7 @@ public class GameManager : NetworkBehaviour
 
     public PlayerStatus GetOpponentStatus(PlayerRef currentPlayer)
     {
-        foreach (var kvp in playerStatuses)
+        foreach (var kvp in localPlayerStatuses)
         {
             if (kvp.Key != currentPlayer)
             {
@@ -95,9 +164,19 @@ public class GameManager : NetworkBehaviour
         if (NetworkedPlayerCards.ContainsKey(player))
         {
             NetworkedPlayerCards.Remove(player);
+            NetworkedPlayerStatuses.Remove(player);
             localPlayerCards.Remove(player);
-            playerStatuses.Remove(player);
-            Debug.Log($"ª±®a {player} ¤wÂ÷¶}¹CÀ¸");
+            localPlayerStatuses.Remove(player);
+            Debug.Log($"Player {player} has left the game");
+        }
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        // åœ¨é€™è£¡è™•ç†éŠæˆ²ç‹€æ…‹æ›´æ–°
+        if (Object.HasStateAuthority && GameStarted)
+        {
+            // Debug.Log($"Game in progress with {NetworkedPlayerStatuses.Count} players");
         }
     }
 }

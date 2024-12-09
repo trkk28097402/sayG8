@@ -17,11 +17,21 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
     private Vector3 baseRotation;    // 新增：記錄基本旋轉
     private Vector3 baseScale;       // 新增：記錄基本縮放
     private bool isHovered = false;
-    private bool isSelected = false;
+    public bool isSelected = false;
 
     [SerializeField] private float hoverHeight = 50f;
     [SerializeField] private float hoverScale = 1.2f;
     [SerializeField] private float hoverDuration = 0.2f;
+
+    private void Update()
+    {
+        // 如果卡牌被選中且按下 Enter
+        if (isSelected && Input.GetKeyDown(KeyCode.Return))
+        {
+            Debug.Log("Enter pressed on selected card");
+            PlayCard();
+        }
+    }
 
     // 設定我是哪張卡
     public void SetCardData(NetworkedCardData data)
@@ -154,6 +164,34 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
         rectTransform.anchoredPosition = basePosition;
         rectTransform.eulerAngles = baseRotation;
         rectTransform.localScale = baseScale;
+    }
+
+    public void PlayCard()
+    {
+        Debug.Log("PlayCard method called");
+        var cardOnHand = GetComponentInParent<CardOnHand>();
+        if (cardOnHand == null)
+        {
+            Debug.LogError("CardOnHand not found");
+            return;
+        }
+
+        int cardIndex = cardOnHand.GetCardIndex(this);
+        Debug.Log($"Card index: {cardIndex}");
+
+        var cardData = cardOnHand.GetCardData(cardIndex);
+        Debug.Log($"Card data retrieved: {cardData.cardName}");
+
+        var playedCardsManager = FindObjectOfType<PlayedCardsManager>();
+        if (playedCardsManager != null)
+        {
+            Debug.Log("Found PlayedCardsManager, calling PlayCard");
+            playedCardsManager.PlayCard(cardData, cardIndex);
+        }
+        else
+        {
+            Debug.LogError("PlayedCardsManager not found");
+        }
     }
 
     private void OnDestroy()

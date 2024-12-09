@@ -33,32 +33,47 @@ public class CardOnHand : NetworkBehaviour
     {
         base.Spawned();
         Debug.Log("CardOnHand Spawned started");
-        runner = FindObjectOfType<NetworkRunner>();
-        if (runner == null)
+
+        // 使用協程來確保所有必要組件都已初始化
+        StartCoroutine(InitializeAfterSpawn());
+    }
+
+    private IEnumerator InitializeAfterSpawn()
+    {
+        // 等待找到 NetworkRunner
+        while (runner == null)
         {
-            Debug.LogError("NetworkRunner not found in scene!");
-            return;
+            runner = FindObjectOfType<NetworkRunner>();
+            if (runner == null)
+            {
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+        Debug.Log($"Found NetworkRunner, LocalPlayer: {runner.LocalPlayer}");
+
+        // 等待找到 GameManager
+        while (GameManager.Instance == null)
+        {
+            yield return new WaitForSeconds(0.1f);
+        }
+        Debug.Log("Found GameManager");
+
+        // 註冊到 GameManager
+        GameManager.Instance.RegisterPlayerCard(runner.LocalPlayer, this);
+        Debug.Log($"Attempted to register player {runner.LocalPlayer}");
+
+        // 註冊玩家狀態事件
+        while (PlayerStatus.Instance == null)
+        {
+            yield return new WaitForSeconds(0.1f);
         }
 
-        // 訂閱 PlayerStatus 事件
         playerStatus = PlayerStatus.Instance;
-        Debug.Log($"Found PlayerStatus: {playerStatus != null}");
-        if (playerStatus != null)
-        {
-            Debug.Log("Before subscribing events");
-            playerStatus.OnInitialHandDrawn += HandleInitialHand;
-            playerStatus.OnCardDrawn += HandleNewCard;
-            playerStatus.OnCardRemoved += HandleCardRemoved;
-            playerStatus.OnDeckShuffled += HandleDeckShuffled;
-            Debug.Log("After subscribing events");
-        }
-        else Debug.LogError($"Player Status管理器不存在");
-
-        var gameManager = FindObjectOfType<GameManager>();
-        if (gameManager != null)
-        {
-            gameManager.RegisterPlayerCard(runner.LocalPlayer, this);
-        }
+        Debug.Log("註冊玩家狀態事件");
+        playerStatus.OnInitialHandDrawn += HandleInitialHand;
+        playerStatus.OnCardDrawn += HandleNewCard;
+        playerStatus.OnCardRemoved += HandleCardRemoved;
+        playerStatus.OnDeckShuffled += HandleDeckShuffled;
     }
 
     private void OnDestroy()
@@ -100,8 +115,10 @@ public class CardOnHand : NetworkBehaviour
 
     public void HandleCardRemoved(int index)
     {
+        Debug.Log($"HandleCardRemoved called with index: {index}");
         if (index >= 0 && index < cardsInHand.Count)
         {
+            Debug.Log("Index is valid, removing card");
             var cardRect = cardsInHand[index];
             if (cardDataMap.ContainsKey(cardRect))
             {
@@ -111,6 +128,20 @@ public class CardOnHand : NetworkBehaviour
             cardsInHand.RemoveAt(index);
             RearrangeCards();
         }
+        else
+        {
+            Debug.LogError($"Invalid index: {index}, cardsInHand.Count: {cardsInHand.Count}");
+        }
+    }
+
+    // 新增一個方法來確保玩家狀態也更新
+    public void RemoveCard(int index)
+    {
+        if (playerStatus != null)
+        {
+            playerStatus.currentdeck.In_Hand_Count--;
+        }
+        HandleCardRemoved(index);
     }
 
     public void HandleDeckShuffled()
@@ -291,6 +322,7 @@ public class CardOnHand : NetworkBehaviour
         }
     }
 
+
     public NetworkedCardData GetCardData(int index)
     {
         if (index >= 0 && index < cardsInHand.Count)
@@ -298,5 +330,11 @@ public class CardOnHand : NetworkBehaviour
             return cardDataMap[cardsInHand[index]];
         }
         throw new System.IndexOutOfRangeException("Card index out of range");
+    }
+
+    public int GetCardIndex(CardInteraction card)
+    {
+        var cardTransform = card.GetComponent<RectTransform>();
+        return cardsInHand.IndexOf(cardTransform);
     }
 }
