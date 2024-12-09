@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using DG.Tweening;
 using Fusion;
 using System.Collections;
@@ -11,124 +10,173 @@ public class CardOnHand : NetworkBehaviour
     [SerializeField] private GameObject cardPrefab;
     [SerializeField] private RectTransform deckPosition;
     [SerializeField] private RectTransform handContainer;
+    [SerializeField] private Transform cardSelectLayer;
 
     private NetworkRunner runner;
+    private PlayerStatus playerStatus;
 
-    private int CardCount = 5;
-    private static int CardMaxCount = 10;
-    [Networked, Capacity(10)] private NetworkArray<NetworkedCardData> networkedCardData => default;
+    private int CardMaxCount = 10;
     private List<RectTransform> cardsInHand = new List<RectTransform>();
+    private Dictionary<RectTransform, NetworkedCardData> cardDataMap = new Dictionary<RectTransform, NetworkedCardData>();
 
-    private float cardSpacing = 200f;
     private float drawDuration = 0.5f;
     private float drawDelay = 0.2f;
-    private float cardRotationRange = 15f;
 
     private CardInteraction currentSelectedCard;
 
+    private void Awake()
+    {
+
+    }
+
     public override void Spawned()
     {
+        base.Spawned();
+        Debug.Log("CardOnHand Spawned started");
         runner = FindObjectOfType<NetworkRunner>();
         if (runner == null)
         {
             Debug.LogError("NetworkRunner not found in scene!");
             return;
         }
-        Debug.Log($"Runner state: {runner.State}, LocalPlayer: {runner.LocalPlayer}");
+
+        // 訂閱 PlayerStatus 事件
+        playerStatus = PlayerStatus.Instance;
+        Debug.Log($"Found PlayerStatus: {playerStatus != null}");
+        if (playerStatus != null)
+        {
+            Debug.Log("Before subscribing events");
+            playerStatus.OnInitialHandDrawn += HandleInitialHand;
+            playerStatus.OnCardDrawn += HandleNewCard;
+            playerStatus.OnCardRemoved += HandleCardRemoved;
+            playerStatus.OnDeckShuffled += HandleDeckShuffled;
+            Debug.Log("After subscribing events");
+        }
+        else Debug.LogError($"Player Status管理器不存在");
 
         var gameManager = FindObjectOfType<GameManager>();
         if (gameManager != null)
         {
             gameManager.RegisterPlayerCard(runner.LocalPlayer, this);
-            Debug.Log($"Registering card for player {runner.LocalPlayer}");
         }
     }
 
-    public void SetupCards(NetworkedCardData[] cards)
+    private void OnDestroy()
     {
-        if (cards == null || cards.Length == 0)
+        if (playerStatus != null)
         {
-            Debug.LogError("Attempted to setup cards with null or empty array");
-            return;
+            playerStatus.OnInitialHandDrawn -= HandleInitialHand;
+            playerStatus.OnCardDrawn -= HandleNewCard;
+            playerStatus.OnCardRemoved -= HandleCardRemoved;
+            playerStatus.OnDeckShuffled -= HandleDeckShuffled;
         }
 
-        // Store card data
-        for (int i = 0; i < Mathf.Min(cards.Length, CardMaxCount); i++)
+        // 清理資源
+        foreach (var card in cardsInHand)
         {
-            networkedCardData.Set(i, cards[i]);
+            if (card != null)
+            {
+                Destroy(card.gameObject);
+            }
         }
-
-        // Start drawing animation
-        StartCoroutine(DrawInitialCards());
+        cardsInHand.Clear();
+        cardDataMap.Clear();
     }
 
-    private IEnumerator DrawInitialCards()
+    public void HandleInitialHand(NetworkedCardData[] cards)
     {
+        Debug.Log("準備抽牌動畫");
+        StartCoroutine(DrawInitialCards(cards));
+    }
+
+    public void HandleNewCard(NetworkedCardData cardData)
+    {
+        if (cardsInHand.Count >= CardMaxCount) return;
+
+        Vector2 startPos = deckPosition.anchoredPosition;
+        CreateAndAnimateCard(cardData, startPos, cardsInHand.Count);
+        RearrangeCards();
+    }
+
+    public void HandleCardRemoved(int index)
+    {
+        if (index >= 0 && index < cardsInHand.Count)
+        {
+            var cardRect = cardsInHand[index];
+            if (cardDataMap.ContainsKey(cardRect))
+            {
+                cardDataMap.Remove(cardRect);
+            }
+            Destroy(cardRect.gameObject);
+            cardsInHand.RemoveAt(index);
+            RearrangeCards();
+        }
+    }
+
+    public void HandleDeckShuffled()
+    {
+        // 可以添加洗牌動畫效果
+        Debug.Log("Deck has been shuffled");
+    }
+
+    [SerializeField] private float cardSpacing = 200f;        // 減少間距讓卡片重疊
+    [SerializeField] private float cardRotationRange = 45f;  // 扇形展開角度
+    [SerializeField] private float defaultYPosition = 0f;  // 手牌基準Y座標
+    [SerializeField] private float cardForwardTilt = 5f;     // 向前傾斜角度
+
+    private IEnumerator DrawInitialCards(NetworkedCardData[] cards)
+    {
+        Debug.Log("抽牌動畫啟動!");
         if (handContainer == null || deckPosition == null)
         {
             Debug.LogError("Required references are missing!");
             yield break;
         }
 
-        float totalWidth = (CardCount - 1) * cardSpacing;
+        float totalWidth = (cards.Length - 1) * cardSpacing;
         float startX = -totalWidth / 2;
 
-        for (int i = 0; i < CardCount; i++)
+        for (int i = 0; i < cards.Length; i++)
         {
-            if (cardPrefab == null)
-            {
-                Debug.LogError("Card prefab is null!");
-                yield break;
-            }
-
-            // Instantiate and setup card
-            var cardObject = Instantiate(cardPrefab, deckPosition.position, Quaternion.identity, handContainer);
-            var cardRect = cardObject.GetComponent<RectTransform>();
-            var cardInteraction = cardObject.GetComponent<CardInteraction>();
-
-            if (cardRect == null || cardInteraction == null)
-            {
-                Debug.LogError("Card prefab is missing required components!");
-                Destroy(cardObject);
-                continue;
-            }
-
-            cardsInHand.Add(cardRect);
-
-            // Update visual elements
-            if (i < networkedCardData.Length)
-            {
-                UpdateCardVisual(cardObject, networkedCardData[i]);
-            }
-
-            // Calculate position and rotation
-            float xPos = startX + (i * cardSpacing);
-            float rotation = Mathf.Lerp(cardRotationRange, -cardRotationRange, (float)i / (CardCount - 1));
-
-            // Set initial position
-            cardRect.anchoredPosition = deckPosition.anchoredPosition;
-
-            // Create and store reference to card interaction component
-            var cardRef = cardInteraction;
-
-            // Create animation sequence
-            Sequence drawSequence = DOTween.Sequence();
-
-            // Add animations to sequence
-            drawSequence.Append(cardRect.DOAnchorPos(new Vector2(xPos, 0), drawDuration).SetEase(Ease.OutBack));
-            drawSequence.Join(cardRect.DORotate(new Vector3(0, 0, rotation), drawDuration).SetEase(Ease.OutBack));
-            drawSequence.Join(cardRect.DOScale(Vector3.one, drawDuration).From(Vector3.one * 0.5f).SetEase(Ease.OutBack));
-
-            // Only save original state after animation completes and if component still exists
-            drawSequence.OnComplete(() => {
-                if (cardRef != null && cardRef.gameObject != null)
-                {
-                    cardRef.SaveOriginalState();
-                }
-            });
-
+            Vector2 startPos = deckPosition.anchoredPosition;
             yield return new WaitForSeconds(drawDelay);
+            CreateAndAnimateCard(cards[i], startPos, i);
         }
+    }
+
+    private void CreateAndAnimateCard(NetworkedCardData cardData, Vector2 startPos, int index)
+    {
+        var cardObject = Instantiate(cardPrefab, deckPosition.position, Quaternion.identity, handContainer);
+        var cardRect = cardObject.GetComponent<RectTransform>();
+        var cardInteraction = cardObject.GetComponent<CardInteraction>();
+
+        if (cardRect == null || cardInteraction == null)
+        {
+            Debug.LogError("Card prefab is missing required components!");
+            Destroy(cardObject);
+            return;
+        }
+
+        cardsInHand.Add(cardRect);
+        cardDataMap[cardRect] = cardData;
+
+        if (cardInteraction != null)
+        {
+            cardInteraction.SetCardData(cardData);
+        }
+
+        UpdateCardVisual(cardObject, cardData);
+
+        // 設置初始位置
+        cardRect.anchoredPosition = startPos;
+        cardRect.localScale = Vector3.one * 0.5f;
+
+        // 先做放大動畫
+        Sequence drawSequence = DOTween.Sequence();
+        drawSequence.Append(cardRect.DOScale(Vector3.one, drawDuration).SetEase(Ease.OutBack));
+        drawSequence.OnComplete(() => {
+            UpdateCardPositions(); // 更新所有卡片位置
+        });
     }
 
     private void UpdateCardVisual(GameObject cardObject, NetworkedCardData data)
@@ -138,34 +186,92 @@ public class CardOnHand : NetworkBehaviour
         Image cardImage = cardObject.GetComponentInChildren<Image>();
         if (cardImage != null)
         {
-            var sprite = Resources.Load<Sprite>(data.imagePath.ToString());
+            var sprite = Resources.Load<Sprite>(data.imagePath.Value);
             if (sprite != null)
             {
                 cardImage.sprite = sprite;
             }
             else
             {
-                Debug.LogWarning($"Could not load sprite from path: {data.imagePath}");
+                Debug.LogWarning($"Could not load sprite from path: {data.imagePath.Value}");
             }
         }
 
         TMPro.TextMeshProUGUI cardName = cardObject.GetComponentInChildren<TMPro.TextMeshProUGUI>();
         if (cardName != null)
         {
-            cardName.text = data.cardName.ToString();
+            cardName.text = data.cardName.Value;
+        }
+    }
+
+    private void UpdateCardPositions()
+    {
+        if (cardsInHand.Count == 0) return;
+
+        float totalWidth = (cardsInHand.Count - 1) * cardSpacing;
+        float startX = -totalWidth / 2;
+
+        for (int i = 0; i < cardsInHand.Count; i++)
+        {
+            RectTransform cardRect = cardsInHand[i];
+            if (cardRect != null)
+            {
+                float xPos = startX + (i * cardSpacing);
+                float normalizedIndex = cardsInHand.Count > 1 ? (float)i / (cardsInHand.Count - 1) : 0.5f;
+                // 修改這裡：把左右旋轉角度反過來
+                float rotation = Mathf.Lerp(cardRotationRange, -cardRotationRange, normalizedIndex);
+
+                // 設置基礎位置和旋轉
+                Vector2 targetPosition = new Vector2(xPos, defaultYPosition);
+                // 修改這裡：cardForwardTilt 改為正值，讓卡片向後傾斜
+                Vector3 targetRotation = new Vector3(-cardForwardTilt, 0, rotation);
+
+                cardRect.DOAnchorPos(targetPosition, drawDuration).SetEase(Ease.OutBack);
+                cardRect.DORotate(targetRotation, drawDuration).SetEase(Ease.OutBack);
+
+                // 更新 CardInteraction 的原始狀態
+                var cardInteraction = cardRect.GetComponent<CardInteraction>();
+                if (cardInteraction != null)
+                {
+                    DOVirtual.DelayedCall(drawDuration, () => {
+                        cardInteraction.SaveOriginalState();
+                    });
+                }
+            }
         }
     }
 
     public void OnCardSelected(CardInteraction card)
     {
+        // 如果已經有選中的卡片且不是同一張，先重置它
         if (currentSelectedCard != null && currentSelectedCard != card)
         {
-            currentSelectedCard.ResetCard();
+            currentSelectedCard.ForceReset();
         }
+
         currentSelectedCard = card;
+
+        // 如果有卡片被選中，將它移到特殊層級
+        if (card != null && cardSelectLayer != null)
+        {
+            card.transform.SetParent(cardSelectLayer);
+        }
     }
 
-    // 其他方法保持不變
+    // 新增這個方法
+    public void ReturnCardToHand(CardInteraction card)
+    {
+        if (card != null)
+        {
+            card.transform.SetParent(handContainer);
+            if (card == currentSelectedCard)
+            {
+                currentSelectedCard = null;
+            }
+            UpdateCardPositions();
+        }
+    }
+
     public void RearrangeCards()
     {
         float totalWidth = (cardsInHand.Count - 1) * cardSpacing;
@@ -177,8 +283,20 @@ public class CardOnHand : NetworkBehaviour
             float rotation = Mathf.Lerp(cardRotationRange, -cardRotationRange, (float)i / (cardsInHand.Count - 1));
 
             RectTransform card = cardsInHand[i];
-            card.DOAnchorPos(new Vector2(xPos, 0), 0.3f).SetEase(Ease.OutBack);
-            card.DORotate(new Vector3(0, 0, rotation), 0.3f).SetEase(Ease.OutBack);
+            if (card != null)
+            {
+                card.DOAnchorPos(new Vector2(xPos, 0), 0.3f).SetEase(Ease.OutBack);
+                card.DORotateQuaternion(Quaternion.Euler(0, 0, rotation), 0.3f).SetEase(Ease.OutBack);
+            }
         }
+    }
+
+    public NetworkedCardData GetCardData(int index)
+    {
+        if (index >= 0 && index < cardsInHand.Count)
+        {
+            return cardDataMap[cardsInHand[index]];
+        }
+        throw new System.IndexOutOfRangeException("Card index out of range");
     }
 }

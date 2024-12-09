@@ -6286,6 +6286,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 1584551814}
     m_Modifications:
     - target: {fileID: 47785922770510755, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
+      propertyPath: m_Maskable
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 47785922770510755, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_RaycastTarget
       value: 0
       objectReference: {fileID: 0}
@@ -6379,7 +6383,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6845406186426836810, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 150
+      value: 300
       objectReference: {fileID: 0}
     - target: {fileID: 6845406186426836810, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
