@@ -3,7 +3,6 @@ using UnityEngine;
 using TMPro;
 using System.Collections;
 using UnityEngine.UI;
-using System;
 
 public class TurnManager : NetworkBehaviour
 {
@@ -35,6 +34,12 @@ public class TurnManager : NetworkBehaviour
     [Networked]
     private NetworkBool NetworkedInitialized { get; set; }
 
+    [Networked]
+    private NetworkBool IsTimerRunning { get; set; }
+
+    [Networked]
+    private float NetworkedRemainingTime { get; set; }
+
     private const float TURN_DURATION = 30.0f;
     private const float WARNING_TIME = 5f;
     private bool hasPlayedWarningSound = false;
@@ -46,7 +51,6 @@ public class TurnManager : NetworkBehaviour
 
     private void Awake()
     {
-        Debug.Log("TurnManager Awake called");
         if (Instance == null)
         {
             Instance = this;
@@ -74,9 +78,8 @@ public class TurnManager : NetworkBehaviour
 
     private IEnumerator InitializeAfterSpawn()
     {
-        Debug.Log("Starting TurnManager initialization");
+        Debug.Log($"Starting TurnManager initialization. Instance: {Instance}, This: {this}");
 
-        // 等待 NetworkRunner
         while (runner == null)
         {
             runner = Object.Runner;
@@ -88,7 +91,6 @@ public class TurnManager : NetworkBehaviour
         }
         Debug.Log("NetworkRunner found");
 
-        // 等待 GameManager
         while (GameManager.Instance == null)
         {
             Debug.Log("Waiting for GameManager...");
@@ -97,25 +99,22 @@ public class TurnManager : NetworkBehaviour
         gameManager = GameManager.Instance;
         Debug.Log("GameManager found");
 
-        // 初始化 UI
         InitializeUI();
 
-        // 設置本地初始化標記
         localInitialized = true;
-        Debug.Log("Local initialization completed");
+        Debug.Log($"Local initialization completed. Instance: {Instance}, This: {this}");
 
-        // 如果是主機，設置網路初始化標記
         if (Object.HasStateAuthority)
         {
             NetworkedInitialized = true;
-            Debug.Log("Network initialization completed");
+            Debug.Log($"Network initialization completed. HasStateAuthority: {Object.HasStateAuthority}");
             StartCoroutine(WaitForPlayersAndStart());
         }
     }
 
     private void InitializeUI()
     {
-        if (turnText != null) turnText.text = "等待遊戲開始...";
+        if (turnText != null) turnText.text = "遊戲開始...";
         if (timerText != null) timerText.text = "";
         if (firstPlayerAnnouncement != null)
         {
@@ -148,7 +147,7 @@ public class TurnManager : NetworkBehaviour
             Debug.Log($"First player selected: {CurrentTurnPlayer}");
 
             IsGameStarted = true;
-            StartTurn();
+            StartTurn(CurrentTurnPlayer);
             Rpc_AnnounceFirstPlayer(CurrentTurnPlayer);
         }
         else
@@ -164,7 +163,7 @@ public class TurnManager : NetworkBehaviour
 
         if (firstPlayerAnnouncement != null)
         {
-            firstPlayerAnnouncement.text = $"遊戲開始！{playerName}先攻";
+            firstPlayerAnnouncement.text = $"遊戲開始！{playerName}先手";
             firstPlayerAnnouncement.gameObject.SetActive(true);
             StartCoroutine(HideAnnouncementAfterDelay());
         }
@@ -181,12 +180,51 @@ public class TurnManager : NetworkBehaviour
         }
     }
 
-    private void StartTurn()
+    public void SwitchToNextPlayer()
+    {
+        Debug.Log($"SwitchToNextPlayer called by {Runner?.LocalPlayer}");
+        Rpc_RequestSwitchTurn(CurrentTurnPlayer);
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void Rpc_RequestSwitchTurn(PlayerRef currentPlayer)
     {
         if (!Object.HasStateAuthority) return;
 
+        Debug.Log($"Rpc_RequestSwitchTurn received for player {currentPlayer}");
+        PlayerRef nextPlayer = gameManager.GetOpponentPlayer(currentPlayer);
+
+        if (nextPlayer != PlayerRef.None)
+        {
+            Debug.Log($"Switching turn from {currentPlayer} to {nextPlayer}");
+            CurrentTurnPlayer = nextPlayer;
+            StartTurn(nextPlayer);
+            Rpc_NotifyTurnSwitched(nextPlayer);
+        }
+        else
+        {
+            Debug.LogError("Could not find next player");
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_NotifyTurnSwitched(PlayerRef newPlayer)
+    {
+        Debug.Log($"Turn switched to player {newPlayer}");
+        CurrentTurnPlayer = newPlayer;
+        PlaySound(turnStartSound);
+        UpdateUI();
+    }
+
+    private void StartTurn(PlayerRef player)
+    {
+        if (!Object.HasStateAuthority) return;
+
+        Debug.Log($"Starting turn for player {player}");
         TurnTimer = TickTimer.CreateFromSeconds(runner, TURN_DURATION);
+        IsTimerRunning = true;
         hasPlayedWarningSound = false;
+        NetworkedRemainingTime = TURN_DURATION;
         Rpc_PlayTurnStartSound();
     }
 
@@ -194,6 +232,18 @@ public class TurnManager : NetworkBehaviour
     private void Rpc_PlayTurnStartSound()
     {
         PlaySound(turnStartSound);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_PlayTurnEndSound()
+    {
+        PlaySound(turnEndSound);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_PlayTimeWarningSound()
+    {
+        PlaySound(timeWarningSound);
     }
 
     private void PlaySound(AudioClip clip)
@@ -211,6 +261,8 @@ public class TurnManager : NetworkBehaviour
         if (Object.HasStateAuthority && TurnTimer.IsRunning)
         {
             float remainingTime = TurnTimer.RemainingTime(runner).GetValueOrDefault();
+            NetworkedRemainingTime = remainingTime;
+            IsTimerRunning = true;
 
             if (!hasPlayedWarningSound && remainingTime <= WARNING_TIME)
             {
@@ -234,19 +286,12 @@ public class TurnManager : NetworkBehaviour
         UpdateTurnUI();
     }
 
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void Rpc_PlayTimeWarningSound()
-    {
-        PlaySound(timeWarningSound);
-    }
-
     private void UpdateTimerUI()
     {
-        if (timerText != null && TurnTimer.IsRunning)
+        if (timerText != null && IsTimerRunning)
         {
-            float remainingTime = TurnTimer.RemainingTime(runner).GetValueOrDefault();
-            timerText.text = $"剩餘時間: {remainingTime:F1}秒";
-            timerText.color = remainingTime <= WARNING_TIME ? Color.red : normalTextColor;
+            timerText.text = $"剩餘時間: {NetworkedRemainingTime:F1}秒";
+            timerText.color = NetworkedRemainingTime <= WARNING_TIME ? Color.red : normalTextColor;
         }
     }
 
@@ -259,31 +304,6 @@ public class TurnManager : NetworkBehaviour
             turnText.text = $"現在是{playerName}回合";
             turnText.color = isLocalPlayerTurn ? turnHighlightColor : normalTextColor;
         }
-    }
-
-    public void SwitchToNextPlayer()
-    {
-        if (!Object.HasStateAuthority) return;
-
-        Rpc_PlayTurnEndSound();
-
-        PlayerRef nextPlayer = gameManager.GetOpponentPlayer(CurrentTurnPlayer);
-        if (nextPlayer != PlayerRef.None)
-        {
-            Debug.Log($"Switching turn from {CurrentTurnPlayer} to {nextPlayer}");
-            CurrentTurnPlayer = nextPlayer;
-            StartTurn();
-        }
-        else
-        {
-            Debug.LogError("Could not find next player");
-        }
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void Rpc_PlayTurnEndSound()
-    {
-        PlaySound(turnEndSound);
     }
 
     public bool IsPlayerTurn(PlayerRef playerRef)
@@ -312,13 +332,6 @@ public class TurnManager : NetworkBehaviour
         bool objectValid = Object != null && Object.IsValid;
         bool runnerValid = runner != null;
         bool gameManagerValid = gameManager != null;
-
-        Debug.Log($"TurnManager initialization check:" +
-                 $"\nObject valid: {objectValid}" +
-                 $"\nRunner valid: {runnerValid}" +
-                 $"\nGameManager valid: {gameManagerValid}" +
-                 $"\nLocal initialized: {localInitialized}" +
-                 $"\nNetworked initialized: {NetworkedInitialized}");
 
         return objectValid &&
                runnerValid &&

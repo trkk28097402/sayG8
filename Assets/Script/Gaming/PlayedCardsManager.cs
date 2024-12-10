@@ -1,4 +1,4 @@
-using Fusion;
+嚜簑sing Fusion;
 using UnityEngine;
 using System.Collections.Generic;
 using DG.Tweening;
@@ -9,14 +9,15 @@ using System.Collections;
 public struct PlayedCardInfo : INetworkStruct
 {
     public PlayerRef PlayerRef;
-    public NetworkedCardData CardData;
+    public int CardId;
+    public int DeckId;
 }
 
 public class PlayedCardsManager : NetworkBehaviour
 {
     [Header("References")]
     [SerializeField] private GameObject playedCardPrefab;
-    [SerializeField] private Image playAreaImage; // 改用 Image
+    [SerializeField] private Image playAreaImage;
 
     [Header("Settings")]
     [SerializeField] private float cardSpacing = 150f;
@@ -32,20 +33,20 @@ public class PlayedCardsManager : NetworkBehaviour
     private List<RectTransform> playedCardObjects = new List<RectTransform>();
     private NetworkRunner runner;
     private GameManager gameManager;
+    private bool isInitialized = false;
+    private GameDeckDatabase gameDeckDatabase;
 
     private RectTransform PlayArea => playAreaImage.rectTransform;
-
-    private bool isInitialized = false;
 
     public override void Spawned()
     {
         base.Spawned();
         StartCoroutine(InitializeAfterSpawn());
+        gameDeckDatabase = new GameDeckDatabase();
     }
 
     private IEnumerator InitializeAfterSpawn()
     {
-        // 等待 TurnManager 完全初始化
         while (TurnManager.Instance == null || !TurnManager.Instance.IsFullyInitialized())
         {
             Debug.Log("Waiting for TurnManager to initialize...");
@@ -54,7 +55,7 @@ public class PlayedCardsManager : NetworkBehaviour
 
         while (runner == null)
         {
-            runner = FindObjectOfType<NetworkRunner>();
+            runner = Object.Runner;
             if (runner == null)
             {
                 yield return new WaitForSeconds(0.1f);
@@ -69,29 +70,38 @@ public class PlayedCardsManager : NetworkBehaviour
     {
         Debug.Log($"Attempting to play card with index {handIndex}");
 
-        if (!Object.HasStateAuthority)
-        {
-            Debug.Log("No state authority, returning");
-            return;
-        }
-
         if (runner == null)
         {
             Debug.LogError("NetworkRunner is null");
             return;
         }
 
-        // 檢查是否為該玩家的回合
         if (!TurnManager.Instance.IsPlayerTurn(runner.LocalPlayer))
         {
             Debug.Log("Not your turn!");
             return;
         }
 
+        Rpc_RequestPlayCard(cardData.cardId, GameDeckManager.Instance.GetPlayerDeck(runner.LocalPlayer),
+            handIndex, runner.LocalPlayer);
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void Rpc_RequestPlayCard(int cardId, int deckId, int handIndex, PlayerRef player)
+    {
+        if (!Object.HasStateAuthority) return;
+
+        if (!TurnManager.Instance.IsPlayerTurn(player))
+        {
+            Debug.LogWarning($"Received play card request from {player} but it's not their turn!");
+            return;
+        }
+
         PlayedCardInfo newCard = new PlayedCardInfo
         {
-            PlayerRef = runner.LocalPlayer,
-            CardData = cardData
+            PlayerRef = player,
+            CardId = cardId,
+            DeckId = deckId
         };
 
         if (CurrentPlayedCardCount < PlayedCards.Length)
@@ -99,37 +109,53 @@ public class PlayedCardsManager : NetworkBehaviour
             PlayedCards.Set(CurrentPlayedCardCount, newCard);
             CurrentPlayedCardCount++;
 
-            if (GameManager.Instance != null)
-            {
-                if (GameManager.Instance.localPlayerCards.ContainsKey(runner.LocalPlayer))
-                {
-                    var playerCard = GameManager.Instance.localPlayerCards[runner.LocalPlayer];
-                    if (playerCard != null)
-                    {
-                        Debug.Log($"Removing card {handIndex} from player {runner.LocalPlayer}");
-                        playerCard.HandleCardRemoved(handIndex);
+            // Notify all clients about the new card
+            Rpc_NotifyCardPlayed(handIndex, player, cardId, deckId);
 
-                        // 出牌後切換回合
-                        TurnManager.Instance.SwitchToNextPlayer();
-                    }
-                }
-                else
-                {
-                    Debug.LogError($"Player {runner.LocalPlayer} not found in GameManager's dictionary");
-                }
+            // Switch turn after card is played
+            TurnManager.Instance.SwitchToNextPlayer();
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_NotifyCardPlayed(int handIndex, PlayerRef player, int cardId, int deckId)
+    {
+        Debug.Log($"Card played notification received: Player {player}, Card {cardId}");
+
+        // Remove card from hand if it's the local player
+        if (player == runner.LocalPlayer)
+        {
+            if (GameManager.Instance.localPlayerCards.TryGetValue(player, out var playerCard))
+            {
+                Debug.Log($"Removing card {handIndex} from player {player}'s hand");
+                playerCard.HandleCardRemoved(handIndex);
             }
             else
             {
-                Debug.LogError("GameManager.Instance is null");
+                Debug.LogError($"Player {player} not found in GameManager's dictionary");
             }
         }
+
+        // Create the played card for all players
+        PlayedCardInfo cardInfo = new PlayedCardInfo
+        {
+            PlayerRef = player,
+            CardId = cardId,
+            DeckId = deckId
+        };
+
+        CreatePlayedCard(cardInfo);
     }
 
     public override void FixedUpdateNetwork()
     {
+        if (!isInitialized) return;
+
+        // Make sure all clients have all played cards
         while (playedCardObjects.Count < CurrentPlayedCardCount)
         {
-            CreatePlayedCard(PlayedCards.Get(playedCardObjects.Count));
+            PlayedCardInfo cardInfo = PlayedCards.Get(playedCardObjects.Count);
+            CreatePlayedCard(cardInfo);
         }
     }
 
@@ -138,12 +164,20 @@ public class PlayedCardsManager : NetworkBehaviour
         GameObject cardObj = Instantiate(playedCardPrefab, PlayArea);
         RectTransform cardRect = cardObj.GetComponent<RectTransform>();
 
-        // 設置卡牌的基本屬性
         cardRect.anchorMin = new Vector2(0.5f, 0.5f);
         cardRect.anchorMax = new Vector2(0.5f, 0.5f);
         cardRect.pivot = new Vector2(0.5f, 0.5f);
 
-        UpdateCardVisual(cardObj, cardInfo.CardData);
+        // Get deck data and create card data
+        GameDeckData deckData = gameDeckDatabase.GetDeckById(cardInfo.DeckId);
+        NetworkedCardData cardData = new NetworkedCardData
+        {
+            cardId = cardInfo.CardId,
+            cardName = $"Card {cardInfo.CardId}",
+            imagePath = $"{deckData.deck_path}/{cardInfo.CardId + 1}"
+        };
+
+        UpdateCardVisual(cardObj, cardData);
 
         Vector2 startPos = GetStartPosition(cardInfo.PlayerRef);
         cardRect.anchoredPosition = startPos;
@@ -165,7 +199,7 @@ public class PlayedCardsManager : NetworkBehaviour
 
     private Vector2 GetStartPosition(PlayerRef playerRef)
     {
-        if (playerRef == runner.LocalPlayer)
+        if (playerRef == Runner.LocalPlayer)
         {
             return new Vector2(0, -300);
         }
@@ -185,6 +219,10 @@ public class PlayedCardsManager : NetworkBehaviour
             {
                 cardImage.sprite = sprite;
             }
+            else
+            {
+                Debug.LogWarning($"Could not load sprite from path: {data.imagePath.Value}");
+            }
         }
 
         TMPro.TextMeshProUGUI cardName = cardObject.GetComponentInChildren<TMPro.TextMeshProUGUI>();
@@ -192,5 +230,18 @@ public class PlayedCardsManager : NetworkBehaviour
         {
             cardName.text = data.cardName.Value;
         }
+    }
+
+    private void OnDestroy()
+    {
+        // Clean up all card objects
+        foreach (var cardRect in playedCardObjects)
+        {
+            if (cardRect != null)
+            {
+                Destroy(cardRect.gameObject);
+            }
+        }
+        playedCardObjects.Clear();
     }
 }

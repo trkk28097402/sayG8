@@ -75,6 +75,20 @@ public class GameManager : NetworkBehaviour
             }
             Debug.Log($"Successfully registered player {player}");
         }
+
+        // 同步到其他客戶端
+        Rpc_SyncPlayerCard(player, cardHand.Object.Id);
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.All)]
+    private void Rpc_SyncPlayerCard(PlayerRef player, NetworkId cardId)
+    {
+        var cardHand = Runner.FindObject(cardId).GetComponent<CardOnHand>();
+        if (cardHand != null)
+        {
+            localPlayerCards[player] = cardHand;
+            Debug.Log($"Synced player {player} card hand to local dictionary");
+        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.StateAuthority)]
