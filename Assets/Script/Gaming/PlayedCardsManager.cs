@@ -62,6 +62,13 @@ public class PlayedCardsManager : NetworkBehaviour
             return;
         }
 
+        // 檢查是否為該玩家的回合
+        if (!TurnManager.Instance.IsPlayerTurn(runner.LocalPlayer))
+        {
+            Debug.Log("Not your turn!");
+            return;
+        }
+
         PlayedCardInfo newCard = new PlayedCardInfo
         {
             PlayerRef = runner.LocalPlayer,
@@ -75,7 +82,6 @@ public class PlayedCardsManager : NetworkBehaviour
 
             if (GameManager.Instance != null)
             {
-                Debug.Log($"Current registered players: {string.Join(", ", GameManager.Instance.localPlayerCards.Keys)}");
                 if (GameManager.Instance.localPlayerCards.ContainsKey(runner.LocalPlayer))
                 {
                     var playerCard = GameManager.Instance.localPlayerCards[runner.LocalPlayer];
@@ -83,6 +89,9 @@ public class PlayedCardsManager : NetworkBehaviour
                     {
                         Debug.Log($"Removing card {handIndex} from player {runner.LocalPlayer}");
                         playerCard.HandleCardRemoved(handIndex);
+
+                        // 出牌後切換回合
+                        TurnManager.Instance.SwitchToNextPlayer();
                     }
                 }
                 else

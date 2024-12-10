@@ -98,11 +98,7 @@ public class GameDeckManager : NetworkBehaviour
         }
 
         int playerIndex = playerRef.PlayerId;
-        if (playerIndex >= 0 && playerIndex < DeckIds.Length)
-        {
-            return DeckIds[playerIndex];
-        }
-        return -1;
+        return DeckIds[playerIndex];
     }
 
     private void OnDestroy()

@@ -15,6 +15,10 @@
       "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\gamemanage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\turnmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\turnmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\playedcardsmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\playedcardsmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -34,8 +38,20 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "TurnManager.cs",
+              "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\TurnManager.cs",
+              "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\TurnManager.cs",
+              "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\TurnManager.cs",
+              "RelativeToolTip": "Assets\\Script\\Gaming\\TurnManager.cs",
+              "ViewState": "AQIAAP0AAAAAAAAAAAAowBkBAAABAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-12-10T19:36:18.063Z"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
@@ -44,20 +60,20 @@
               "RelativeDocumentMoniker": "Assets\\Script\\NetworkPlayerInfo.cs",
               "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\NetworkPlayerInfo.cs",
               "RelativeToolTip": "Assets\\Script\\NetworkPlayerInfo.cs",
-              "ViewState": "AQIAAFcAAAAAAAAAAAAswGcAAAAJAAAA",
+              "ViewState": "AQIAAFEAAAAAAAAAAAAvwGQAAAAkAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-12-09T23:52:14.258Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "PlayedCardsManager.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\PlayedCardsManager.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\PlayedCardsManager.cs",
               "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\PlayedCardsManager.cs",
               "RelativeToolTip": "Assets\\Script\\Gaming\\PlayedCardsManager.cs",
-              "ViewState": "AQIAAJIAAAAAAAAAAAAAAKcAAAABAAAA",
+              "ViewState": "AQIAAE0AAAAAAAAAAAAswGoAAAAFAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-12-09T20:42:17.915Z"
             },
@@ -69,13 +85,13 @@
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\GameManage.cs",
               "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\GameManage.cs",
               "RelativeToolTip": "Assets\\Script\\Gaming\\GameManage.cs",
-              "ViewState": "AQIAAGAAAAAAAAAAAAAUwHQAAAAkAAAA",
+              "ViewState": "AQIAAAYAAAAAAAAAAIAwwBIAAAAmAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-12-09T08:59:02.589Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "CardInteraction.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\CardInteraction.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\CardInteraction.cs",
@@ -93,13 +109,13 @@
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\PlayerStatus.cs",
               "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\PlayerStatus.cs",
               "RelativeToolTip": "Assets\\Script\\Gaming\\PlayerStatus.cs",
-              "ViewState": "AQIAAIIAAAAAAAAAAAAcwKQAAAAvAAAA",
+              "ViewState": "AQIAAIYAAAAAAAAAAAAvwI8AAABDAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-12-07T12:28:56.117Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "CardonHand.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\CardonHand.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\CardonHand.cs",

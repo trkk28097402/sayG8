@@ -180,7 +180,9 @@ public class PlayerStatus : NetworkBehaviour
         for (int i = 0; i < 5; i++)
         {
             int cardId = currentdeck.DrawNextCard();
+            //Debug.Log("ovo1");
             initialHand[i] = GetCardData(cardId);
+            //Debug.Log("ovo2");
         }
         OnInitialHandDrawn?.Invoke(initialHand);
     }
@@ -210,6 +212,7 @@ public class PlayerStatus : NetworkBehaviour
 
     private NetworkedCardData GetCardData(int cardid)
     {
+        Debug.Log($"cureentdeck id = {currentdeck.id}");
         GameDeckData deckData = gameDeckDatabase.GetDeckById(currentdeck.id);
         return new NetworkedCardData
         {

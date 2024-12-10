@@ -12,12 +12,16 @@ public class GameManager : NetworkBehaviour
     public Dictionary<PlayerRef, CardOnHand> localPlayerCards = new Dictionary<PlayerRef, CardOnHand>();
     public Dictionary<PlayerRef, PlayerStatus> localPlayerStatuses = new Dictionary<PlayerRef, PlayerStatus>();
 
-    [Networked]
-    private NetworkBool GameStarted { get; set; }
-
-    public static GameManager Instance { get; private set; }
     public const int MAX_PLAYERS = 2;
 
+    [Networked]
+    private NetworkBool GameStarted { get; set; }
+    [Networked, Capacity(MAX_PLAYERS)]
+    private NetworkArray<PlayerRef> ConnectedPlayers { get; }
+    [Networked]
+    private int ConnectedPlayerCount { get; set; }
+
+    public static GameManager Instance { get; private set; }
     private NetworkRunner runner;
 
     private void Awake()
@@ -62,26 +66,30 @@ public class GameManager : NetworkBehaviour
     {
         Debug.Log($"Rpc_RegisterPlayerStatus called for player {player}");
 
-        // 先檢查這個玩家是否已經註冊
+        // 檢查這個玩家是否已經註冊
         bool isNewPlayer = !NetworkedPlayerStatuses.ContainsKey(player);
-
-        if (isNewPlayer)
+        Debug.Log($"已經有{ConnectedPlayerCount}位玩家連線");
+        if (isNewPlayer && ConnectedPlayerCount < MAX_PLAYERS)
         {
             NetworkedPlayerStatuses.Add(player, statusId);
-            Debug.Log($"Added player {player} to NetworkedPlayerStatuses, current players: {NetworkedPlayerStatuses.Count}");
+            // 添加到已連接玩家列表
+            ConnectedPlayers.Set(ConnectedPlayerCount, player);
+            ConnectedPlayerCount++;
+
+            Debug.Log($"Added player {player} to NetworkedPlayerStatuses, current players: {ConnectedPlayerCount}");
 
             Rpc_RegisterLocalPlayerStatus(player, statusId);
 
             // 如果有足夠的玩家且是有權限的客戶端，開始遊戲
-            if (Object.HasStateAuthority && NetworkedPlayerStatuses.Count >= MAX_PLAYERS)
+            if (Object.HasStateAuthority && ConnectedPlayerCount >= MAX_PLAYERS)
             {
-                Debug.Log($"Starting game with {NetworkedPlayerStatuses.Count} players");
+                Debug.Log($"Starting game with {ConnectedPlayerCount} players");
                 StartGame();
             }
         }
         else
         {
-            Debug.Log($"Player {player} was already registered");
+            Debug.Log($"Player {player} was already registered or max players reached");
         }
     }
 
@@ -169,6 +177,30 @@ public class GameManager : NetworkBehaviour
             localPlayerStatuses.Remove(player);
             Debug.Log($"Player {player} has left the game");
         }
+    }
+
+    public PlayerRef[] GetConnectedPlayers()
+    {
+        PlayerRef[] players = new PlayerRef[ConnectedPlayerCount];
+        for (int i = 0; i < ConnectedPlayerCount; i++)
+        {
+            players[i] = ConnectedPlayers.Get(i);
+        }
+        return players;
+    }
+
+    // 新增：獲取對手的方法
+    public PlayerRef GetOpponentPlayer(PlayerRef currentPlayer)
+    {
+        for (int i = 0; i < ConnectedPlayerCount; i++)
+        {
+            PlayerRef player = ConnectedPlayers.Get(i);
+            if (player != currentPlayer)
+            {
+                return player;
+            }
+        }
+        return PlayerRef.None;
     }
 
     public override void FixedUpdateNetwork()
