@@ -72,10 +72,10 @@ public class PlayerStatus : NetworkBehaviour
     public static PlayerStatus Instance { get; private set; }
 
     GameDeckDatabase gameDeckDatabase;
+    private bool isWaitingForDeckId = false;
 
     public bool IsInitialized { get; set; }
 
-    // 定義事件
     public event Action<NetworkedCardData[]> OnInitialHandDrawn;
     public event Action<NetworkedCardData> OnCardDrawn;
     public event Action<int> OnCardRemoved;
@@ -95,7 +95,6 @@ public class PlayerStatus : NetworkBehaviour
 
     private GameManager gameManager;
 
-    // OnNetworkSpawned 是在網路物件完全準備好後才呼叫的
     public override void Spawned()
     {
         base.Spawned();
@@ -119,29 +118,72 @@ public class PlayerStatus : NetworkBehaviour
         }
         Debug.Log("GameManager found");
 
-        // 通知所有玩家有新玩家加入
+        // 等待 GameDeckManager 初始化完成
+        while (GameDeckManager.Instance == null)
+        {
+            yield return new WaitForSeconds(0.1f);
+        }
+        Debug.Log("GameDeckManager found");
+
+        // 通知 Host
         Rpc_NotifyHost(runner.LocalPlayer, Object.Id);
     }
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
     public void Rpc_NotifyHost(PlayerRef player, NetworkId statusId)
     {
-        // 這個方法只會在房主端執行
         Debug.Log($"Host received notification from player {player}");
         GameManager.Instance.Rpc_RegisterPlayerStatus(player, statusId);
     }
 
     public void Initialized_Cards()
     {
+        if (IsInitialized) return;
 
-        if (IsInitialized) return;  // 防止重複初始化
+        Debug.Log($"Initializing cards for player {Runner.LocalPlayer}");
+        try
+        {
+            StartCoroutine(InitializeCardsWithRetry());
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error in Initialized_Cards: {e}");
+        }
+    }
 
-        Debug.Log($"正在為玩家 {Runner.LocalPlayer} 初始化卡牌");
+    private IEnumerator InitializeCardsWithRetry()
+    {
+        int maxRetries = 5;
+        int currentRetry = 0;
+
+        while (currentRetry < maxRetries)
+        {
+            if (GameDeckManager.Instance != null)
+            {
+                int? deckId = GameDeckManager.Instance.GetPlayerDeck(Runner.LocalPlayer);
+
+                if (deckId.HasValue)
+                {
+                    InitializeCardsWithDeckId(deckId.Value);
+                    yield break;
+                }
+            }
+
+            Debug.Log($"Retry {currentRetry + 1}/{maxRetries} to get deck ID");
+            currentRetry++;
+            yield return new WaitForSeconds(1f);
+        }
+
+        Debug.LogError("Failed to initialize cards after maximum retries");
+    }
+
+    private void InitializeCardsWithDeckId(int deckId)
+    {
         try
         {
             gameDeckDatabase = new GameDeckDatabase();
             currentdeck = new InGameDeck();
-            currentdeck.id = GameDeckManager.Instance.GetPlayerDeck(Runner.LocalPlayer);
+            currentdeck.id = deckId;
             currentdeck.In_Hand_Count = 5;
             currentdeck.Deck_Left_Count = 35;
 
@@ -151,75 +193,144 @@ public class PlayerStatus : NetworkBehaviour
                 initialOrder.Add(i);
             }
 
-            Debug.Log("開始初始化卡牌順序");
+            Debug.Log("Initializing card order");
             currentdeck.InitializeCardOrder(initialOrder);
             currentdeck.Shuffle();
-            Debug.Log("完成洗牌");
+            Debug.Log("Deck shuffled");
 
             IsInitialized = true;
             DrawInitialHand();
-            Debug.Log($"玩家 {Runner.LocalPlayer} 完成初始手牌");
+            Debug.Log($"Player {Runner.LocalPlayer} initial hand drawn");
         }
         catch (Exception e)
         {
-            Debug.LogError($"初始化卡牌時發生錯誤: {e}");
+            Debug.LogError($"Failed to initialize cards with deck ID {deckId}: {e}");
+            IsInitialized = false;
         }
     }
 
     public void DrawInitialHand()
     {
-        // 如果沒有訂閱者，等待一下再試
+        if (!IsInitialized)
+        {
+            Debug.LogError("Attempting to draw initial hand before initialization");
+            return;
+        }
+
         if (OnInitialHandDrawn == null)
         {
-            Debug.Log("等待事件訂閱者...");
+            Debug.Log("Waiting for event subscribers...");
             StartCoroutine(WaitForSubscriberAndDraw());
             return;
         }
 
-        NetworkedCardData[] initialHand = new NetworkedCardData[5];
-        for (int i = 0; i < 5; i++)
+        try
         {
-            int cardId = currentdeck.DrawNextCard();
-            //Debug.Log("ovo1");
-            initialHand[i] = GetCardData(cardId);
-            //Debug.Log("ovo2");
+            NetworkedCardData[] initialHand = new NetworkedCardData[5];
+            for (int i = 0; i < 5; i++)
+            {
+                int cardId = currentdeck.DrawNextCard();
+                if (cardId == -1)
+                {
+                    Debug.LogError("Failed to draw card: deck is empty");
+                    return;
+                }
+
+                bool success = TryGetCardData(cardId, out NetworkedCardData cardData);
+                if (!success)
+                {
+                    Debug.LogError($"Failed to get card data for card ID {cardId}");
+                    return;
+                }
+                initialHand[i] = cardData;
+            }
+            OnInitialHandDrawn?.Invoke(initialHand);
         }
-        OnInitialHandDrawn?.Invoke(initialHand);
+        catch (Exception e)
+        {
+            Debug.LogError($"Error drawing initial hand: {e}");
+        }
     }
 
-    private IEnumerator WaitForSubscriberAndDraw()
+    private bool TryGetCardData(int cardId, out NetworkedCardData cardData)
     {
-        // 等待直到有訂閱者
-        while (OnInitialHandDrawn == null)
+        cardData = new NetworkedCardData
         {
-            yield return new WaitForSeconds(0.1f);
+            cardId = cardId,
+            cardName = "Invalid Card",
+            imagePath = "invalid_path"
+        };
+
+        if (currentdeck.id < 0)
+        {
+            Debug.LogError($"Invalid deck ID: {currentdeck.id}");
+            return false;
         }
 
-        // 有訂閱者了，執行抽牌
-        DrawInitialHand();
+        try
+        {
+            GameDeckData deckData = gameDeckDatabase.GetDeckById(currentdeck.id);
+            if (deckData == null)
+            {
+                Debug.LogError($"No deck data found for ID: {currentdeck.id}");
+                return false;
+            }
+
+            cardData = new NetworkedCardData
+            {
+                cardId = cardId,
+                cardName = $"Card {cardId}",
+                imagePath = $"{deckData.deck_path}/{cardId + 1}"
+            };
+            return true;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error in GetCardData: {e}");
+            return false;
+        }
     }
 
     public void DrawCard()
     {
-        if (currentdeck.Deck_Left_Count > 0)
+        if (!IsInitialized || currentdeck.Deck_Left_Count <= 0)
         {
-            int cardId = currentdeck.DrawNextCard();
-            NetworkedCardData cardData = GetCardData(cardId);
+            Debug.LogWarning("Cannot draw card: deck not initialized or empty");
+            return;
+        }
+
+        int cardId = currentdeck.DrawNextCard();
+        if (cardId == -1)
+        {
+            Debug.LogError("Failed to draw card");
+            return;
+        }
+
+        if (TryGetCardData(cardId, out NetworkedCardData cardData))
+        {
             OnCardDrawn?.Invoke(cardData);
             currentdeck.In_Hand_Count++;
         }
     }
 
-    private NetworkedCardData GetCardData(int cardid)
+    private IEnumerator WaitForSubscriberAndDraw()
     {
-        Debug.Log($"cureentdeck id = {currentdeck.id}");
-        GameDeckData deckData = gameDeckDatabase.GetDeckById(currentdeck.id);
-        return new NetworkedCardData
-        {
-            cardId = cardid,
-            cardName = $"Card {cardid}",  // 使用 NetworkString
-            imagePath = $"{deckData.deck_path}/{cardid + 1}"  // 使用 NetworkString
-        };
-    }
+        float timeout = 5f;
+        float elapsed = 0f;
 
+        while (OnInitialHandDrawn == null && elapsed < timeout)
+        {
+            elapsed += 0.1f;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        if (OnInitialHandDrawn != null)
+        {
+            DrawInitialHand();
+        }
+        else
+        {
+            Debug.LogError("Timed out waiting for event subscribers");
+        }
+    }
 }
