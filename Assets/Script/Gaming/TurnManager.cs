@@ -3,18 +3,25 @@ using UnityEngine;
 using TMPro;
 using System.Collections;
 using UnityEngine.UI;
+using System;
 
 public class TurnManager : NetworkBehaviour
 {
     [Header("UI References")]
     [SerializeField] private TextMeshProUGUI turnText;
     [SerializeField] private TextMeshProUGUI timerText;
-    [SerializeField] private TextMeshProUGUI firstPlayerAnnouncement;  // 新增用於顯示誰先手的文字
+    [SerializeField] private TextMeshProUGUI firstPlayerAnnouncement;
 
     [Header("UI Animation Settings")]
-    [SerializeField] private float announcementDisplayTime = 3f;  // 顯示先手公告的時間
-    [SerializeField] private Color turnHighlightColor = Color.yellow;  // 當前回合的高亮顏色
-    [SerializeField] private Color normalTextColor = Color.white;  // 正常文字顏色
+    [SerializeField] private float announcementDisplayTime = 3f;
+    [SerializeField] private Color turnHighlightColor = Color.yellow;
+    [SerializeField] private Color normalTextColor = Color.white;
+
+    [Header("Audio")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip turnStartSound;
+    [SerializeField] private AudioClip turnEndSound;
+    [SerializeField] private AudioClip timeWarningSound;
 
     [Networked]
     public PlayerRef CurrentTurnPlayer { get; set; }
@@ -25,34 +32,33 @@ public class TurnManager : NetworkBehaviour
     [Networked]
     private NetworkBool IsGameStarted { get; set; }
 
+    [Networked]
+    private NetworkBool NetworkedInitialized { get; set; }
+
     private const float TURN_DURATION = 30.0f;
+    private const float WARNING_TIME = 5f;
+    private bool hasPlayedWarningSound = false;
+    private bool localInitialized = false;
+
     public static TurnManager Instance { get; private set; }
     private GameManager gameManager;
     private NetworkRunner runner;
 
-    // 音效相關
-    [Header("Audio")]
-    [SerializeField] private AudioSource audioSource;
-    [SerializeField] private AudioClip turnStartSound;
-    [SerializeField] private AudioClip turnEndSound;
-    [SerializeField] private AudioClip timeWarningSound;
-
-    private bool hasPlayedWarningSound = false;
-    private const float WARNING_TIME = 5f;  // 剩餘5秒時播放警告音效
-
     private void Awake()
     {
+        Debug.Log("TurnManager Awake called");
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            Debug.Log("TurnManager instance set in Awake");
         }
-        else
+        else if (Instance != this)
         {
+            Debug.Log($"Destroying duplicate TurnManager. Existing instance: {Instance.GetInstanceID()}, This instance: {GetInstanceID()}");
             Destroy(gameObject);
+            return;
         }
 
-        // 確保有 AudioSource
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
@@ -62,33 +68,69 @@ public class TurnManager : NetworkBehaviour
     public override void Spawned()
     {
         base.Spawned();
-        runner = Object.Runner;
-        gameManager = GameManager.Instance;
+        Debug.Log($"TurnManager Spawned on player {Runner?.LocalPlayer}");
+        StartCoroutine(InitializeAfterSpawn());
+    }
 
-        if (Object.HasStateAuthority)
+    private IEnumerator InitializeAfterSpawn()
+    {
+        Debug.Log("Starting TurnManager initialization");
+
+        // 等待 NetworkRunner
+        while (runner == null)
         {
-            StartCoroutine(WaitForPlayersAndStart());
+            runner = Object.Runner;
+            if (runner == null)
+            {
+                Debug.Log("Waiting for NetworkRunner...");
+                yield return new WaitForSeconds(0.1f);
+            }
         }
+        Debug.Log("NetworkRunner found");
+
+        // 等待 GameManager
+        while (GameManager.Instance == null)
+        {
+            Debug.Log("Waiting for GameManager...");
+            yield return new WaitForSeconds(0.1f);
+        }
+        gameManager = GameManager.Instance;
+        Debug.Log("GameManager found");
 
         // 初始化 UI
         InitializeUI();
+
+        // 設置本地初始化標記
+        localInitialized = true;
+        Debug.Log("Local initialization completed");
+
+        // 如果是主機，設置網路初始化標記
+        if (Object.HasStateAuthority)
+        {
+            NetworkedInitialized = true;
+            Debug.Log("Network initialization completed");
+            StartCoroutine(WaitForPlayersAndStart());
+        }
     }
 
     private void InitializeUI()
     {
         if (turnText != null) turnText.text = "等待遊戲開始...";
         if (timerText != null) timerText.text = "";
-        if (firstPlayerAnnouncement != null) firstPlayerAnnouncement.gameObject.SetActive(false);
+        if (firstPlayerAnnouncement != null)
+        {
+            firstPlayerAnnouncement.gameObject.SetActive(false);
+        }
     }
 
     private IEnumerator WaitForPlayersAndStart()
     {
+        Debug.Log("Waiting for players to join...");
         while (gameManager.NetworkedPlayerStatuses.Count < GameManager.MAX_PLAYERS)
         {
             yield return new WaitForSeconds(0.5f);
         }
-
-        // 隨機決定先手玩家
+        Debug.Log("All players joined, determining first player");
         DetermineFirstPlayer();
     }
 
@@ -96,22 +138,22 @@ public class TurnManager : NetworkBehaviour
     {
         if (!Object.HasStateAuthority) return;
 
-        // 獲取所有已連接的玩家
         PlayerRef[] players = gameManager.GetConnectedPlayers();
+        Debug.Log($"Connected players count: {players.Length}");
 
-        // 確保我們有足夠的玩家
         if (players.Length >= 2)
         {
-            // 隨機選擇先手玩家
             int randomIndex = UnityEngine.Random.Range(0, 2);
             CurrentTurnPlayer = players[randomIndex];
+            Debug.Log($"First player selected: {CurrentTurnPlayer}");
 
-            // 開始第一個回合
             IsGameStarted = true;
             StartTurn();
-
-            // 通知所有玩家誰是先手
             Rpc_AnnounceFirstPlayer(CurrentTurnPlayer);
+        }
+        else
+        {
+            Debug.LogError("Not enough players to start the game");
         }
     }
 
@@ -120,7 +162,6 @@ public class TurnManager : NetworkBehaviour
     {
         string playerName = firstPlayer == runner.LocalPlayer ? "你" : "對手";
 
-        // 顯示先手公告
         if (firstPlayerAnnouncement != null)
         {
             firstPlayerAnnouncement.text = $"遊戲開始！{playerName}先攻";
@@ -128,11 +169,7 @@ public class TurnManager : NetworkBehaviour
             StartCoroutine(HideAnnouncementAfterDelay());
         }
 
-        // 播放開始音效
-        if (audioSource != null && turnStartSound != null)
-        {
-            audioSource.PlayOneShot(turnStartSound);
-        }
+        PlaySound(turnStartSound);
     }
 
     private IEnumerator HideAnnouncementAfterDelay()
@@ -150,43 +187,49 @@ public class TurnManager : NetworkBehaviour
 
         TurnTimer = TickTimer.CreateFromSeconds(runner, TURN_DURATION);
         hasPlayedWarningSound = false;
-
-        // 播放回合開始音效
         Rpc_PlayTurnStartSound();
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_PlayTurnStartSound()
     {
-        if (audioSource != null && turnStartSound != null)
+        PlaySound(turnStartSound);
+    }
+
+    private void PlaySound(AudioClip clip)
+    {
+        if (audioSource != null && clip != null)
         {
-            audioSource.PlayOneShot(turnStartSound);
+            audioSource.PlayOneShot(clip);
         }
     }
 
     public override void FixedUpdateNetwork()
     {
-        if (!IsGameStarted) return;
+        if (!IsFullyInitialized() || !IsGameStarted) return;
 
         if (Object.HasStateAuthority && TurnTimer.IsRunning)
         {
             float remainingTime = TurnTimer.RemainingTime(runner).GetValueOrDefault();
 
-            // 檢查是否需要播放警告音效
             if (!hasPlayedWarningSound && remainingTime <= WARNING_TIME)
             {
                 hasPlayedWarningSound = true;
                 Rpc_PlayTimeWarningSound();
             }
 
-            // 檢查回合時間是否結束
             if (TurnTimer.Expired(runner))
             {
+                Debug.Log("Turn timer expired, switching players");
                 SwitchToNextPlayer();
             }
         }
 
-        // 更新 UI
+        UpdateUI();
+    }
+
+    private void UpdateUI()
+    {
         UpdateTimerUI();
         UpdateTurnUI();
     }
@@ -194,10 +237,7 @@ public class TurnManager : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_PlayTimeWarningSound()
     {
-        if (audioSource != null && timeWarningSound != null)
-        {
-            audioSource.PlayOneShot(timeWarningSound);
-        }
+        PlaySound(timeWarningSound);
     }
 
     private void UpdateTimerUI()
@@ -206,16 +246,7 @@ public class TurnManager : NetworkBehaviour
         {
             float remainingTime = TurnTimer.RemainingTime(runner).GetValueOrDefault();
             timerText.text = $"剩餘時間: {remainingTime:F1}秒";
-
-            // 當時間少於5秒時改變顏色
-            if (remainingTime <= WARNING_TIME)
-            {
-                timerText.color = Color.red;
-            }
-            else
-            {
-                timerText.color = normalTextColor;
-            }
+            timerText.color = remainingTime <= WARNING_TIME ? Color.red : normalTextColor;
         }
     }
 
@@ -226,8 +257,6 @@ public class TurnManager : NetworkBehaviour
             bool isLocalPlayerTurn = CurrentTurnPlayer == runner.LocalPlayer;
             string playerName = isLocalPlayerTurn ? "你的" : "對手的";
             turnText.text = $"現在是{playerName}回合";
-
-            // 更新顏色
             turnText.color = isLocalPlayerTurn ? turnHighlightColor : normalTextColor;
         }
     }
@@ -236,47 +265,84 @@ public class TurnManager : NetworkBehaviour
     {
         if (!Object.HasStateAuthority) return;
 
-        // 播放回合結束音效
         Rpc_PlayTurnEndSound();
 
-        // 獲取當前玩家的對手
         PlayerRef nextPlayer = gameManager.GetOpponentPlayer(CurrentTurnPlayer);
         if (nextPlayer != PlayerRef.None)
         {
+            Debug.Log($"Switching turn from {CurrentTurnPlayer} to {nextPlayer}");
             CurrentTurnPlayer = nextPlayer;
-            // 重置回合計時器
             StartTurn();
+        }
+        else
+        {
+            Debug.LogError("Could not find next player");
         }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_PlayTurnEndSound()
     {
-        if (audioSource != null && turnEndSound != null)
+        PlaySound(turnEndSound);
+    }
+
+    public bool IsPlayerTurn(PlayerRef playerRef)
+    {
+        if (!IsFullyInitialized())
         {
-            audioSource.PlayOneShot(turnEndSound);
+            Debug.Log($"Turn check failed - TurnManager not fully initialized for player {playerRef}");
+            return false;
+        }
+
+        try
+        {
+            bool isTurn = IsGameStarted && CurrentTurnPlayer == playerRef;
+            Debug.Log($"Turn check for player {playerRef}: GameStarted={IsGameStarted}, CurrentTurnPlayer={CurrentTurnPlayer}, isTurn={isTurn}");
+            return isTurn;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error in IsPlayerTurn: {e.Message}");
+            return false;
         }
     }
 
-    // 檢查是否為當前玩家的回合
-    public bool IsPlayerTurn(PlayerRef playerRef)
+    public bool IsFullyInitialized()
     {
-        return IsGameStarted && CurrentTurnPlayer == playerRef;
+        bool objectValid = Object != null && Object.IsValid;
+        bool runnerValid = runner != null;
+        bool gameManagerValid = gameManager != null;
+
+        Debug.Log($"TurnManager initialization check:" +
+                 $"\nObject valid: {objectValid}" +
+                 $"\nRunner valid: {runnerValid}" +
+                 $"\nGameManager valid: {gameManagerValid}" +
+                 $"\nLocal initialized: {localInitialized}" +
+                 $"\nNetworked initialized: {NetworkedInitialized}");
+
+        return objectValid &&
+               runnerValid &&
+               gameManagerValid &&
+               localInitialized &&
+               NetworkedInitialized;
     }
 
-    // 取得當前回合玩家
     public PlayerRef GetCurrentTurnPlayer()
     {
         return CurrentTurnPlayer;
     }
 
-    // 取得剩餘時間
     public float GetRemainingTime()
     {
-        if (TurnTimer.IsRunning)
+        if (!IsFullyInitialized() || !TurnTimer.IsRunning) return 0f;
+        return TurnTimer.RemainingTime(runner).GetValueOrDefault();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
         {
-            return TurnTimer.RemainingTime(runner).GetValueOrDefault();
+            Instance = null;
         }
-        return 0f;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Fusion;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -39,12 +40,27 @@ public class GameManager : NetworkBehaviour
     public override void Spawned()
     {
         base.Spawned();
-        runner = Object.Runner;
+        StartCoroutine(InitializeAfterSpawn());
+
         Debug.Log("GameManager Spawned");
         if (Object.HasStateAuthority)
         {
             InitializeGame();
         }
+    }
+
+    private IEnumerator InitializeAfterSpawn()
+    {
+
+        while (runner == null)
+        {
+            runner = FindObjectOfType<NetworkRunner>();
+            if (runner == null)
+            {
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+
     }
 
     public void RegisterPlayerCard(PlayerRef player, CardOnHand cardHand)

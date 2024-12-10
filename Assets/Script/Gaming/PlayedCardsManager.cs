@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine.UI;
 using System;
+using System.Collections;
 
 public struct PlayedCardInfo : INetworkStruct
 {
@@ -34,16 +35,34 @@ public class PlayedCardsManager : NetworkBehaviour
 
     private RectTransform PlayArea => playAreaImage.rectTransform;
 
+    private bool isInitialized = false;
+
     public override void Spawned()
     {
         base.Spawned();
-        runner = FindObjectOfType<NetworkRunner>();
-        gameManager = FindObjectOfType<GameManager>();
+        StartCoroutine(InitializeAfterSpawn());
+    }
 
-        if (playAreaImage == null)
+    private IEnumerator InitializeAfterSpawn()
+    {
+        // 等待 TurnManager 完全初始化
+        while (TurnManager.Instance == null || !TurnManager.Instance.IsFullyInitialized())
         {
-            Debug.LogError("Play Area Image is not assigned!");
+            Debug.Log("Waiting for TurnManager to initialize...");
+            yield return new WaitForSeconds(0.1f);
         }
+
+        while (runner == null)
+        {
+            runner = FindObjectOfType<NetworkRunner>();
+            if (runner == null)
+            {
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+
+        isInitialized = true;
+        Debug.Log("PlayedCardsManager initialized");
     }
 
     public void PlayCard(NetworkedCardData cardData, int handIndex)
