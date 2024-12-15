@@ -113,19 +113,48 @@ public class CardOnHand : NetworkBehaviour
         RearrangeCards();
     }
 
+    public void HandleCardPlayed(int cardIndex)
+    {
+        Debug.Log($"HandleCardPlayed: Card played at index {cardIndex}");
+
+        // 只更新手牌數量
+        if (playerStatus != null)
+        {
+            playerStatus.currentdeck.In_Hand_Count--;
+        }
+
+        // 開始抽牌序列
+        StartCoroutine(DrawCardAfterDelay());
+
+        // 不再直接呼叫 HandleCardRemoved，讓 PlayedCardsManager 的 RPC 來處理卡牌移除
+    }
+
     public void HandleCardRemoved(int index)
     {
-        Debug.Log($"HandleCardRemoved called with index: {index}");
+        Debug.Log($"HandleCardRemoved called with index: {index} from {new System.Diagnostics.StackTrace().ToString()}");
         if (index >= 0 && index < cardsInHand.Count)
         {
-            Debug.Log("Index is valid, removing card");
+            Debug.Log($"Removing card at index {index}, total cards before removal: {cardsInHand.Count}");
+
+            // 移除特定索引的卡牌
             var cardRect = cardsInHand[index];
             if (cardDataMap.ContainsKey(cardRect))
             {
                 cardDataMap.Remove(cardRect);
             }
-            Destroy(cardRect.gameObject);
+
+            // 銷毀 GameObject
+            if (cardRect != null)
+            {
+                Destroy(cardRect.gameObject);
+            }
+
+            // 從列表中移除
             cardsInHand.RemoveAt(index);
+
+            Debug.Log($"Total cards after removal: {cardsInHand.Count}");
+
+            // 重新排列剩餘的卡牌
             RearrangeCards();
         }
         else
@@ -134,14 +163,21 @@ public class CardOnHand : NetworkBehaviour
         }
     }
 
-    // 新增一個方法來確保玩家狀態也更新
-    public void RemoveCard(int index)
+    private IEnumerator DrawCardAfterDelay()
     {
-        if (playerStatus != null)
+        // 等待動畫完成以及卡牌移除完成
+        yield return new WaitForSeconds(0.5f);
+
+        // 確保 PlayerStatus 已初始化且牌堆還有牌
+        if (playerStatus != null && playerStatus.currentdeck.Deck_Left_Count > 0)
         {
-            playerStatus.currentdeck.In_Hand_Count--;
+            Debug.Log("Drawing new card after play");
+            playerStatus.DrawCard();
         }
-        HandleCardRemoved(index);
+        else
+        {
+            Debug.Log("Cannot draw card: PlayerStatus not initialized or deck empty");
+        }
     }
 
     public void HandleDeckShuffled()

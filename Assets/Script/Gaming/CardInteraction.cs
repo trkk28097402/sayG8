@@ -187,6 +187,9 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
         {
             Debug.Log("Found PlayedCardsManager, calling PlayCard");
             playedCardsManager.PlayCard(cardData, cardIndex);
+
+            // 通知 CardOnHand 處理抽牌邏輯
+            cardOnHand.HandleCardPlayed(cardIndex);
         }
         else
         {
