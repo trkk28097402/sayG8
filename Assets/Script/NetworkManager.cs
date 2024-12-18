@@ -128,6 +128,7 @@ public class NetworkManager : MonoBehaviour
                 Debug.Log($"Spawning character for player {player}");
                 Vector3 spawnPosition = new Vector3(0, 1, 0);
                 NetworkObject networkPlayerObject = runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
+                Debug.Log($"Rotation = {Quaternion.identity}");
 
                 if (networkPlayerObject != null)
                 {

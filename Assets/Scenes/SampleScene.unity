@@ -996,7 +996,7 @@ PrefabInstance:
     - target: {fileID: 7937704772368446591, guid: 16c2a7369c34f9f45b8a29a79ed53cb2, type: 3}
       propertyPath: PlayerPrefab
       value: 
-      objectReference: {fileID: 3364404435958766693, guid: 6adfbb15cef93f14f81ffde882437351, type: 3}
+      objectReference: {fileID: 6871829795180063501, guid: 8d44c13a10f94ce4ea4873125a1d1e55, type: 3}
     - target: {fileID: 9215004599396134931, guid: 16c2a7369c34f9f45b8a29a79ed53cb2, type: 3}
       propertyPath: Flags
       value: 131073
