@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿//#define USE_GPT4
+#define USE_CLAUDE
+
+using UnityEngine;
 using System;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,8 +13,8 @@ using System.Linq;
 
 public struct MoodState : INetworkStruct
 {
-    public NetworkString<_32> AssignedMood;  // 分配的氛圍類型
-    public float MoodValue;                  // 當前氛圍值
+    public NetworkString<_32> AssignedMood;
+    public float MoodValue;
 }
 
 [Serializable]
@@ -19,8 +22,8 @@ public class Message
 {
     public string role;
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public string content;  // 為系統消息保留
-    public List<ContentPart> parts;  // 為用戶消息添加 parts
+    public string content;
+    public List<ContentPart> parts;
 }
 
 [Serializable]
@@ -30,7 +33,7 @@ public class ContentPart
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
     public string text;
     [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-    public ImageUrl image_url;  // 改為 image_url
+    public ImageUrl image_url;
 }
 
 [Serializable]
@@ -38,6 +41,8 @@ public class ImageUrl
 {
     public string url;
 }
+
+#if USE_GPT4
 [Serializable]
 public class ChatRequest
 {
@@ -56,12 +61,67 @@ public class Choice
 {
     public Message message;
 }
+#endif
+
+#if USE_CLAUDE
+[Serializable]
+public class ClaudeRequest
+{
+    public string model = "claude-3-5-sonnet-20241022";
+    public int max_tokens = 1024;
+    public string system;  // 頂層系統提示
+    public List<ClaudeMessage> messages;
+}
+
+[Serializable]
+public class ClaudeMessage
+{
+    public string role;
+    public List<ClaudeContent> content;
+}
+
+[Serializable]
+public class ClaudeContent
+{
+    public string type;
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public string text;
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ClaudeImageSource source;
+}
+
+[Serializable]
+public class ClaudeImageSource
+{
+    public string type = "base64";
+    public string media_type = "image/jpeg";
+    public string data;
+}
+
+[Serializable]
+public class ClaudeResponse
+{
+    public string id;
+    public string model;
+    public string role;
+    public List<ClaudeContent> content;
+}
+#endif
 
 public class MoodEvaluator : NetworkBehaviour
 {
     private const float WINNING_THRESHOLD = 100f;
+
+#if USE_GPT4
     private const string OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+#elif USE_CLAUDE
+    private const string CLAUDE_URL = "https://api.anthropic.com/v1/messages";
+#endif
+
     [SerializeField] private string apiKey;
+#if USE_CLAUDE
+    [SerializeField] private string anthropicVersion = "2023-06-01";
+#endif
 
     [Networked]
     private NetworkDictionary<PlayerRef, MoodState> PlayerMoods { get; }
@@ -172,13 +232,6 @@ public class MoodEvaluator : NetworkBehaviour
         }
     }
 
-    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    private void Rpc_RequestEvaluateMood(PlayerRef player)
-    {
-        if (!Object.HasStateAuthority) return;
-        EvaluateMood(player);
-    }
-
     private async void EvaluateMood(PlayerRef player)
     {
         try
@@ -192,12 +245,17 @@ public class MoodEvaluator : NetworkBehaviour
         }
     }
 
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void Rpc_RequestEvaluateMood(PlayerRef player)
+    {
+        if (!Object.HasStateAuthority) return;
+        EvaluateMood(player);
+    }
+
     private async Task<string> GetMoodEvaluation(PlayerRef player)
     {
-        // Only proceed if we have game history
         if (gameHistory.Count == 0)
         {
-            Debug.LogWarning("No game history available for mood evaluation");
             return JsonConvert.SerializeObject(new Dictionary<string, object>
             {
                 { "火爆", 0 },
@@ -206,54 +264,61 @@ public class MoodEvaluator : NetworkBehaviour
             });
         }
 
-        var messages = new List<Message>
-        {
-            new Message
-            {
-                role = "system",
-                content = @"你是一個對話氛圍分析師，需要分析卡牌遊戲中玩家通過出牌創造的對話氛圍。
-                請分析玩家之間通過卡片形成的對話發展，評估'火爆'和'幽默'兩種氛圍值的變化。
-            
-                請嚴格按照以下JSON格式回應（確保使用英文標點符號）：
-                {
-                    ""火爆"": 0,
-                    ""幽默"": 0,
-                    ""分析"": ""在此填寫分析""
-                }
-                注意：
-                1. 火爆和幽默的值必須是介於-20到+20之間的數字
-                2. 必須使用英文的雙引號和冒號
-                3. 不要添加任何額外的文字或格式"
-            }
-        };
+#if USE_GPT4
+        var messages = new List<Message>();
+#elif USE_CLAUDE
+        var claudeMessages = new List<ClaudeMessage>();
+        string systemPrompt = @"你是一個專業的圖像氛圍分析師，專門分析網路梗圖和表情包。請根據以下步驟進行分析：
 
-        var textParts = new StringBuilder();
-        textParts.AppendLine("目前遊戲進度：");
+        1. 圖像解讀：
+           - 觀察圖中人物/角色的表情、動作和姿態
+           - 注意圖像中的文字內容（如果有）
 
-        // Get recent cards (up to 3)
-        int recentCount = Math.Min(gameHistory.Count, 3);
-        for (int i = gameHistory.Count - recentCount; i < gameHistory.Count; i++)
+        2. 上下文考慮：
+           - 結合之前玩家的出牌記錄
+           - 考慮當前的氛圍值和遊戲進展
+           - 評估這張圖片如何延續或改變對話氣氛
+
+        3. 綜合分析：
+           - 判斷圖片是否在試圖引發幽默效果或激烈情緒
+           - 評估梗圖的表達方式（如：反諷、戲劇化、逗趣等）
+           - 考慮梗圖在當前語境下的效果
+
+        請使用以下 JSON 格式回應（必須嚴格遵守此格式）：
         {
-            var card = gameHistory[i];
-            string playerNumber = card.Player.Equals(player) ? "1" : "2";
-            textParts.AppendLine($"玩家{playerNumber}使用了{card.DeckName}牌組中的第{card.CardNumber}張卡");
+            ""火爆"": <-20到+20的數值>,
+            ""幽默"": <-20到+20的數值>,
+            ""分析"": ""<簡短說明你對圖片氛圍的理解以及為何給出這樣的評分>""
         }
 
-        // 添加當前氛圍值資訊
+        評分說明：
+        - 正值表示增強該氛圍，負值表示減弱該氛圍
+        - 絕對值越大表示影響越強烈
+        - 火爆和幽默可以同時存在，也可以互相抵消
+
+        注意：
+        1. 請使用英文標點符號
+        2. 僅返回 JSON 格式內容，不要有任何額外文字
+        3. 分析要精簡有力，直指要害，不需要詳細描述圖片內容";
+#endif
+
+#if USE_GPT4
+        messages.Add(new Message { role = "system", content = systemPrompt });
+#endif
+
+        // 準備用戶消息內容
+        var contentParts = new List<ClaudeContent>();
         if (PlayerMoods.TryGet(player, out var currentMood))
         {
-            textParts.AppendLine($"\n當前氛圍值：");
-            textParts.AppendLine($"玩家的{currentMood.AssignedMood}氛圍值為{currentMood.MoodValue}");
+            contentParts.Add(new ClaudeContent
+            {
+                type = "text",
+                text = $"當前氛圍值：玩家的{currentMood.AssignedMood}氛圍值為{currentMood.MoodValue}"
+            });
         }
 
-        var userMessage = new Message
-        {
-            role = "user",
-            content = textParts.ToString(),  // 設置 content 為文字描述
-            parts = new List<ContentPart>()
-        };
-
-        // 添加圖片部分
+        // 添加圖片
+        int recentCount = Math.Min(gameHistory.Count, 3);
         for (int i = gameHistory.Count - recentCount; i < gameHistory.Count; i++)
         {
             var card = gameHistory[i];
@@ -263,20 +328,18 @@ public class MoodEvaluator : NetworkBehaviour
                 if (cardTexture != null)
                 {
                     byte[] imageBytes = cardTexture.EncodeToJPG();
-                    string base64Image = Convert.ToBase64String(imageBytes);
+                    string base64Data = Convert.ToBase64String(imageBytes);
 
-                    userMessage.parts.Add(new ContentPart
+                    contentParts.Add(new ClaudeContent
                     {
-                        type = "image_url",
-                        image_url = new ImageUrl
+                        type = "image",
+                        source = new ClaudeImageSource
                         {
-                            url = $"data:image/jpeg;base64,{base64Image}"
+                            type = "base64",
+                            media_type = "image/jpeg",
+                            data = base64Data
                         }
                     });
-                }
-                else
-                {
-                    Debug.LogError($"Failed to load card image at path: {card.ImagePath}");
                 }
             }
             catch (Exception ex)
@@ -285,23 +348,96 @@ public class MoodEvaluator : NetworkBehaviour
             }
         }
 
-        messages.Add(userMessage);
+        contentParts.Add(new ClaudeContent
+        {
+            type = "text",
+            text = "請分析圖中展現的氛圍，並按照規定的 JSON 格式回應。"
+        });
 
+#if USE_CLAUDE
+        claudeMessages.Add(new ClaudeMessage
+        {
+            role = "user",
+            content = contentParts
+        });
+
+        var request = new ClaudeRequest
+        {
+            model = "claude-3-5-sonnet-20241022",
+            max_tokens = 1024,
+            system = systemPrompt,
+            messages = claudeMessages
+        };
+
+        return await SendClaudeRequest(request);
+#elif USE_GPT4
+        messages.Add(new Message
+        {
+            role = "user",
+            content = "請分析以下圖像所展現的對話氛圍",
+            parts = userParts
+        });
+
+        return await SendGPTRequest(messages);
+#else
+        throw new Exception("No AI model defined. Please define either USE_GPT4 or USE_CLAUDE.");
+#endif
+    }
+
+#if USE_GPT4
+    private async Task<string> SendGPTRequest(List<Message> messages)
+    {
         var request = new ChatRequest
         {
             model = "gpt-4o",
             messages = messages
         };
 
+        using (var webRequest = new UnityWebRequest(OPENAI_URL, "POST"))
+        {
+            byte[] jsonToSend = new UTF8Encoding().GetBytes(JsonConvert.SerializeObject(request));
+            webRequest.uploadHandler = new UploadHandlerRaw(jsonToSend);
+            webRequest.downloadHandler = new DownloadHandlerBuffer();
+            webRequest.SetRequestHeader("Content-Type", "application/json");
+            webRequest.SetRequestHeader("Authorization", $"Bearer {apiKey}");
+
+            var operation = webRequest.SendWebRequest();
+            while (!operation.isDone)
+                await Task.Yield();
+
+            if (webRequest.result == UnityWebRequest.Result.Success)
+            {
+                var response = JsonConvert.DeserializeObject<ChatResponse>(webRequest.downloadHandler.text);
+                if (response?.choices == null || response.choices.Length == 0)
+                {
+                    throw new Exception("Empty or invalid API response");
+                }
+                return response.choices[0].message.content;
+            }
+            else
+            {
+                throw new Exception($"API request failed: {webRequest.error}");
+            }
+        }
+    }
+#endif
+
+#if USE_CLAUDE
+    private async Task<string> SendClaudeRequest(ClaudeRequest request)
+    {
         try
         {
-            using (var webRequest = new UnityWebRequest(OPENAI_URL, "POST"))
+            string requestJson = JsonConvert.SerializeObject(request, Formatting.Indented);
+            Debug.Log($"Request JSON: {requestJson}");
+
+            using (var webRequest = new UnityWebRequest(CLAUDE_URL, "POST"))
             {
-                byte[] jsonToSend = new UTF8Encoding().GetBytes(JsonConvert.SerializeObject(request));
+                byte[] jsonToSend = new UTF8Encoding().GetBytes(requestJson);
                 webRequest.uploadHandler = new UploadHandlerRaw(jsonToSend);
                 webRequest.downloadHandler = new DownloadHandlerBuffer();
                 webRequest.SetRequestHeader("Content-Type", "application/json");
-                webRequest.SetRequestHeader("Authorization", $"Bearer {apiKey}");
+                webRequest.SetRequestHeader("x-api-key", apiKey);
+                webRequest.SetRequestHeader("anthropic-version", anthropicVersion);
 
                 var operation = webRequest.SendWebRequest();
                 while (!operation.isDone)
@@ -309,31 +445,34 @@ public class MoodEvaluator : NetworkBehaviour
 
                 if (webRequest.result == UnityWebRequest.Result.Success)
                 {
-                    var response = JsonConvert.DeserializeObject<ChatResponse>(webRequest.downloadHandler.text);
-                    if (response?.choices == null || response.choices.Length == 0)
+                    Debug.Log($"Claude response: {webRequest.downloadHandler.text}");
+                    var response = JsonConvert.DeserializeObject<ClaudeResponse>(webRequest.downloadHandler.text);
+                    if (response?.content == null)
                     {
                         throw new Exception("Empty or invalid API response");
                     }
-                    return response.choices[0].message.content;
+
+                    var textParts = response.content
+                        .Where(p => p.type == "text")
+                        .Select(p => p.text);
+
+                    return string.Join("\n", textParts);
                 }
                 else
                 {
-                    throw new Exception($"API request failed: {webRequest.error}\nResponse: {webRequest.downloadHandler?.text}");
+                    string errorResponse = webRequest.downloadHandler?.text ?? "No response body";
+                    Debug.LogError($"API request failed: {webRequest.error}\nResponse: {errorResponse}");
+                    throw new Exception($"API request failed: {webRequest.error}");
                 }
             }
         }
         catch (Exception ex)
         {
-            Debug.LogError($"Error in API request: {ex.Message}");
-            // Return a safe default response
-            return JsonConvert.SerializeObject(new Dictionary<string, object>
-            {
-                { "火爆", 0 },
-                { "幽默", 0 },
-                { "分析", "API請求失敗，無法評估氛圍" }
-            });
+            Debug.LogError($"Error in SendClaudeRequest: {ex.Message}\nStack trace: {ex.StackTrace}");
+            throw;
         }
     }
+#endif
 
     private void ProcessMoodResponse(string response)
     {
@@ -341,24 +480,43 @@ public class MoodEvaluator : NetworkBehaviour
         {
             Debug.Log($"Raw API response: {response}");
 
-            // Ensure we have valid JSON
             if (string.IsNullOrEmpty(response))
             {
                 throw new Exception("Empty response received");
             }
 
-            // Clean up the response
+            // 清理 JSON 字符串
             response = response.Trim();
-            response = response.Replace("\\\"", "\"").Replace("\\n", "\n");
 
-            // Try to parse as JSON
-            var moodData = JsonConvert.DeserializeObject<Dictionary<string, object>>(response);
+            // 如果回應被包在 markdown 代碼塊中，移除它
+            if (response.StartsWith("```json"))
+            {
+                response = response.Substring(7);
+            }
+            if (response.EndsWith("```"))
+            {
+                response = response.Substring(0, response.Length - 3);
+            }
+
+            // 使用特定的序列化設置來處理 Unicode 字符
+            var settings = new JsonSerializerSettings
+            {
+                StringEscapeHandling = StringEscapeHandling.Default,
+                Formatting = Formatting.None
+            };
+
+            // 定義一個匿名類型來映射回應結構
+            var moodData = JsonConvert.DeserializeObject<Dictionary<string, object>>(
+                response,
+                settings
+            );
+
             if (moodData == null)
             {
                 throw new Exception("Failed to parse mood data");
             }
 
-            // Process each player's mood
+            // 處理每個玩家的心情
             foreach (var player in gameManager.GetConnectedPlayers())
             {
                 if (PlayerMoods.TryGet(player, out var currentMood))
@@ -372,10 +530,11 @@ public class MoodEvaluator : NetworkBehaviour
                 }
             }
 
-            // Log analysis if available
+            // 記錄分析結果
             if (moodData.TryGetValue("分析", out object analysis))
             {
-                Debug.Log($"情緒分析: {analysis}");
+                string analysisText = analysis?.ToString() ?? "無分析內容";
+                Debug.Log($"情緒分析: {analysisText}");
             }
 
             CheckWinCondition();
@@ -383,6 +542,38 @@ public class MoodEvaluator : NetworkBehaviour
         catch (Exception e)
         {
             Debug.LogError($"Error processing mood response: {e.Message}\nResponse: {response}");
+
+            // 嘗試手動解析作為備用方案
+            try
+            {
+                // 使用簡單的字符串處理來提取數值
+                if (response.Contains("\"火爆\":") && response.Contains("\"幽默\":"))
+                {
+                    var fireMatch = System.Text.RegularExpressions.Regex.Match(response, @"""火爆""\s*:\s*(-?\d+)");
+                    var humorMatch = System.Text.RegularExpressions.Regex.Match(response, @"""幽默""\s*:\s*(-?\d+)");
+
+                    if (fireMatch.Success && humorMatch.Success)
+                    {
+                        float fireValue = float.Parse(fireMatch.Groups[1].Value);
+                        float humorValue = float.Parse(humorMatch.Groups[1].Value);
+
+                        foreach (var player in gameManager.GetConnectedPlayers())
+                        {
+                            if (PlayerMoods.TryGet(player, out var currentMood))
+                            {
+                                float moodChange = currentMood.AssignedMood.Value == "火爆" ? fireValue : humorValue;
+                                UpdatePlayerMood(player, moodChange);
+                            }
+                        }
+
+                        Debug.Log("Successfully extracted mood values using backup method");
+                    }
+                }
+            }
+            catch (Exception backupError)
+            {
+                Debug.LogError($"Backup parsing also failed: {backupError.Message}");
+            }
         }
     }
 
@@ -390,6 +581,8 @@ public class MoodEvaluator : NetworkBehaviour
     {
         try
         {
+            if (value == null) return 0f;
+
             if (value is string stringValue)
             {
                 stringValue = stringValue.Trim().Replace("+", "");
@@ -398,9 +591,25 @@ public class MoodEvaluator : NetworkBehaviour
                     return result;
                 }
             }
-            else if (value is long || value is int || value is float || value is double)
+            else if (value is long longValue)
             {
-                return Convert.ToSingle(value);
+                return (float)longValue;
+            }
+            else if (value is int intValue)
+            {
+                return (float)intValue;
+            }
+            else if (value is float floatValue)
+            {
+                return floatValue;
+            }
+            else if (value is double doubleValue)
+            {
+                return (float)doubleValue;
+            }
+            else if (value is decimal decimalValue)
+            {
+                return (float)decimalValue;
             }
 
             throw new Exception($"Invalid mood value format: {value}");
