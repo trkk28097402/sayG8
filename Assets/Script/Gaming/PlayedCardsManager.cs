@@ -35,6 +35,7 @@ public class PlayedCardsManager : NetworkBehaviour
     private GameManager gameManager;
     private bool isInitialized = false;
     private GameDeckDatabase gameDeckDatabase;
+    private MoodEvaluator moodEvaluator;
 
     private RectTransform PlayArea => playAreaImage.rectTransform;
 
@@ -62,8 +63,18 @@ public class PlayedCardsManager : NetworkBehaviour
             }
         }
 
+        while (moodEvaluator == null)
+        {
+            moodEvaluator = FindObjectOfType<MoodEvaluator>();
+            if (moodEvaluator == null)
+            {
+                Debug.Log("Waiting for MoodEvaluator to initialize...");
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+
         isInitialized = true;
-        Debug.Log("PlayedCardsManager initialized");
+        Debug.Log("PlayedCardsManager initialized with MoodEvaluator");
     }
 
     public void PlayCard(NetworkedCardData cardData, int handIndex)
@@ -109,10 +120,8 @@ public class PlayedCardsManager : NetworkBehaviour
             PlayedCards.Set(CurrentPlayedCardCount, newCard);
             CurrentPlayedCardCount++;
 
-            // Notify all clients about the new card
             Rpc_NotifyCardPlayed(handIndex, player, cardId, deckId);
 
-            // Switch turn after card is played
             TurnManager.Instance.SwitchToNextPlayer();
         }
     }
@@ -122,7 +131,7 @@ public class PlayedCardsManager : NetworkBehaviour
     {
         Debug.Log($"Card played notification received: Player {player}, Card {cardId}");
 
-        // Remove card from hand if it's the local player
+        // 移除玩家手牌
         if (player == runner.LocalPlayer)
         {
             if (GameManager.Instance.localPlayerCards.TryGetValue(player, out var playerCard))
@@ -136,7 +145,6 @@ public class PlayedCardsManager : NetworkBehaviour
             }
         }
 
-        // Create the played card for all players
         PlayedCardInfo cardInfo = new PlayedCardInfo
         {
             PlayerRef = player,
@@ -145,13 +153,25 @@ public class PlayedCardsManager : NetworkBehaviour
         };
 
         CreatePlayedCard(cardInfo);
+
+        // 評估氣氛值
+        if (moodEvaluator != null && player == runner.LocalPlayer) // 只有自己打出的牌才呼叫
+        {
+            var deckData = gameDeckDatabase.GetDeckById(deckId);
+            NetworkedCardData cardData = new NetworkedCardData
+            {
+                cardId = cardId,
+                cardName = $"Card {cardId + 1}",
+                imagePath = $"{deckData.deck_path}/{cardId + 1}"
+            };
+            moodEvaluator.OnCardPlayed(cardData, player);
+        }
     }
 
     public override void FixedUpdateNetwork()
     {
         if (!isInitialized) return;
 
-        // Make sure all clients have all played cards
         while (playedCardObjects.Count < CurrentPlayedCardCount)
         {
             PlayedCardInfo cardInfo = PlayedCards.Get(playedCardObjects.Count);
@@ -168,7 +188,6 @@ public class PlayedCardsManager : NetworkBehaviour
         cardRect.anchorMax = new Vector2(0.5f, 0.5f);
         cardRect.pivot = new Vector2(0.5f, 0.5f);
 
-        // Get deck data and create card data
         GameDeckData deckData = gameDeckDatabase.GetDeckById(cardInfo.DeckId);
         NetworkedCardData cardData = new NetworkedCardData
         {
@@ -182,6 +201,7 @@ public class PlayedCardsManager : NetworkBehaviour
         Vector2 startPos = GetStartPosition(cardInfo.PlayerRef);
         cardRect.anchoredPosition = startPos;
 
+        // 卡片动画序列
         Sequence cardSequence = DOTween.Sequence();
 
         cardSequence.Append(cardRect.DOAnchorPos(centerPosition, playAnimationDuration)
@@ -234,7 +254,6 @@ public class PlayedCardsManager : NetworkBehaviour
 
     private void OnDestroy()
     {
-        // Clean up all card objects
         foreach (var cardRect in playedCardObjects)
         {
             if (cardRect != null)
