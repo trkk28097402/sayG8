@@ -3,28 +3,32 @@
   "WorkspaceRootPath": "C:\\Users\\death\\My project (1)\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|c:\\users\\death\\my project (1)\\assets\\script\\gaming\\cardonhand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\cardonhand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|c:\\users\\death\\my project (1)\\assets\\script\\gaming\\moodevaluator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\moodevaluator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\cardinteraction.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\cardinteraction.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\turnmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\turnmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\playerstatus.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\playerstatus.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\gamemanage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\gamemanage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\datas\\networkcarddata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\datas\\networkcarddata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\playedcardsmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\playedcardsmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\turnmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\turnmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\cardinteraction.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\cardinteraction.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\cardonhand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\cardonhand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|C:\\Users\\death\\My project (1)\\assets\\script\\gaming\\playerstatus.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E1CE1FEE-67BE-6533-73AA-CC578BE80DCD}|Assembly-CSharp.csproj|solutionrelative:assets\\script\\gaming\\playerstatus.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -38,7 +42,7 @@
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 6,
               "Title": "PlayerStatus.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\PlayerStatus.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\PlayerStatus.cs",
@@ -51,7 +55,32 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
+              "Title": "NetworkCardData.cs",
+              "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\datas\\NetworkCardData.cs",
+              "RelativeDocumentMoniker": "Assets\\datas\\NetworkCardData.cs",
+              "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\datas\\NetworkCardData.cs",
+              "RelativeToolTip": "Assets\\datas\\NetworkCardData.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-12-17T23:52:54.467Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MoodEvaluator.cs",
+              "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\MoodEvaluator.cs",
+              "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\MoodEvaluator.cs",
+              "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\MoodEvaluator.cs",
+              "RelativeToolTip": "Assets\\Script\\Gaming\\MoodEvaluator.cs",
+              "ViewState": "AQIAAM8AAAAAAAAAAAAswBsBAAArAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-12-17T13:17:52.753Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
               "Title": "CardInteraction.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\CardInteraction.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\CardInteraction.cs",
@@ -63,52 +92,39 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 5,
               "Title": "CardonHand.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\CardonHand.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\CardonHand.cs",
               "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\CardonHand.cs",
               "RelativeToolTip": "Assets\\Script\\Gaming\\CardonHand.cs",
-              "ViewState": "AQIAAGoAAAAAAAAAAAAgwKYAAAAFAAAA",
+              "ViewState": "AQIAAGsAAAAAAAAAAAAYwKYAAAAFAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-12-07T11:38:32.731Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-12-07T11:38:32.731Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 1,
               "Title": "TurnManager.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\TurnManager.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\TurnManager.cs",
               "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\TurnManager.cs",
               "RelativeToolTip": "Assets\\Script\\Gaming\\TurnManager.cs",
-              "ViewState": "AQIAAEsBAAAAAAAAAAAswGgBAAABAAAA",
+              "ViewState": "AQIAALgAAAAAAAAAAAAUwFYBAAArAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-12-10T19:36:18.063Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 3,
               "Title": "PlayedCardsManager.cs",
               "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\PlayedCardsManager.cs",
               "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\PlayedCardsManager.cs",
               "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\PlayedCardsManager.cs",
               "RelativeToolTip": "Assets\\Script\\Gaming\\PlayedCardsManager.cs",
-              "ViewState": "AQIAANkAAAAAAAAAAAAswOsAAAAFAAAA",
+              "ViewState": "AQIAAJUAAAAAAAAAAAAcwKQAAAAQAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-12-09T20:42:17.915Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "GameManage.cs",
-              "DocumentMoniker": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\GameManage.cs",
-              "RelativeDocumentMoniker": "Assets\\Script\\Gaming\\GameManage.cs",
-              "ToolTip": "C:\\Users\\death\\My project (1)\\Assets\\Script\\Gaming\\GameManage.cs",
-              "RelativeToolTip": "Assets\\Script\\Gaming\\GameManage.cs",
-              "ViewState": "AQIAAFsAAAAAAAAAAIAwwA8AAAAYAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-12-09T08:59:02.589Z"
             }
           ]
         }
