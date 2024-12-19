@@ -216,7 +216,8 @@ public class MoodEvaluator : NetworkBehaviour
                          $"Deck: {cardContext.DeckName}, Card: {cardContext.CardNumber}, " +
                          $"ImagePath: {cardContext.ImagePath}");
 
-                gameHistory.Add(cardContext);
+                Rpc_RecordCardPlayed(player, deckData.deckName, cardData.cardId + 1, cardData.imagePath.Value);
+                //gameHistory.Add(cardContext);
 
                 Debug.Log($"{Runner.LocalPlayer} 請求評估氣氛");
                 Rpc_RequestEvaluateMood(Runner.LocalPlayer);
@@ -230,6 +231,25 @@ public class MoodEvaluator : NetworkBehaviour
         {
             Debug.LogError($"Critical error in OnCardPlayed: {e.Message}\nStack trace: {e.StackTrace}");
         }
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void Rpc_RecordCardPlayed(PlayerRef player, string deckName, int cardNumber, string imagePath)
+    {
+        if (!Object.HasStateAuthority) return;
+
+        var cardContext = new PlayedCardContext
+        {
+            Player = player,
+            DeckName = deckName,
+            CardNumber = cardNumber,
+            ImagePath = imagePath
+        };
+
+        gameHistory.Add(cardContext);
+        Debug.Log($"State Authority recorded card - Player: {player}, " +
+                  $"Deck: {deckName}, Card: {cardNumber}, " +
+                  $"ImagePath: {imagePath}");
     }
 
     private async void EvaluateMood(PlayerRef player)
@@ -275,11 +295,12 @@ public class MoodEvaluator : NetworkBehaviour
            - 注意圖像中的文字內容（如果有）
 
         2. 上下文考慮：
-           - 結合之前玩家的出牌記錄
+           - 已提供先前出牌的圖片記錄
            - 考慮當前的氛圍值和遊戲進展
-           - 評估這張圖片如何延續或改變對話氣氛
+           - 評估最新這張圖片如何延續或改變對話氣氛
 
         3. 綜合分析：
+           - 主要分析最新的圖片，先前的圖片僅作為參考
            - 判斷圖片是否在試圖引發幽默效果或激烈情緒
            - 評估梗圖的表達方式（如：反諷、戲劇化、逗趣等）
            - 考慮梗圖在當前語境下的效果
@@ -329,6 +350,17 @@ public class MoodEvaluator : NetworkBehaviour
                 {
                     byte[] imageBytes = cardTexture.EncodeToJPG();
                     string base64Data = Convert.ToBase64String(imageBytes);
+
+                    // Add context text before image
+                    string contextText = i < gameHistory.Count - 1 ?
+                        $"這是先前第{i + 1}張出的牌" :
+                        "這是最新出的一張牌，請主要分析這張圖片的氛圍";
+
+                    contentParts.Add(new ClaudeContent
+                    {
+                        type = "text",
+                        text = contextText
+                    });
 
                     contentParts.Add(new ClaudeContent
                     {
