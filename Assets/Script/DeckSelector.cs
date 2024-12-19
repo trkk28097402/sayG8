@@ -9,6 +9,10 @@ public class DeckSelector : NetworkBehaviour
     [Header("UI Elements")]
     [SerializeField] private Button previousButton;
     [SerializeField] private Button nextButton;
+    [SerializeField] private Button deckDescriptOpenButton; //yu
+    [SerializeField] private Button deckDescriptCloseButton; //yu
+    [SerializeField] private GameObject deckDescriptPop; //yu
+    [SerializeField] private GameObject panelPop; //yu
     [SerializeField] private TextMeshProUGUI deckNameText;
     [SerializeField] private TextMeshProUGUI deckDescriptionText;
     [SerializeField] private Image deckPreviewImage;
@@ -56,6 +60,18 @@ public class DeckSelector : NetworkBehaviour
         {
             nextButton.onClick.AddListener(() => ChangeDeck(1));
         }
+
+        //yu
+        if (deckDescriptOpenButton != null)
+        {
+            deckDescriptOpenButton.onClick.AddListener(() => OpenDescriptPop());
+        }
+
+        if (deckDescriptCloseButton != null)
+        {
+            deckDescriptCloseButton.onClick.AddListener(() => CloseDescriptPop());
+        }
+        //
     }
 
     private void LoadDeckData()
@@ -120,6 +136,24 @@ public class DeckSelector : NetworkBehaviour
             GameDeckManager.Instance.SetPlayerDeck(runner.LocalPlayer, selectedDeckId);
         }
     }
+
+    //yu
+    private void OpenDescriptPop()
+    {
+        Debug.Log("OpenDescriptPop---------------------------------");
+        panelPop.SetActive(false);
+        deckDescriptPop.SetActive(true);
+        
+    }
+
+    private void CloseDescriptPop()
+    {
+        Debug.Log("CloseDescriptPop----------------------------");
+        panelPop.SetActive(true);
+        deckDescriptPop.SetActive(false);
+        
+    }
+    //
 
     private void UpdateDeckDisplay()
     {
