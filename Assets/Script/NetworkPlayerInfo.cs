@@ -32,7 +32,7 @@ public class GameDeckManager : NetworkBehaviour
             {
                 for (int i = 0; i < DeckIds.Length; i++)
                 {
-                    DeckIds.Set(i, -1);  // 設置預設值
+                    DeckIds.Set(i, 0);  // 設置預設值
                 }
             }
 

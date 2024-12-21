@@ -1,4 +1,4 @@
-using Fusion;
+嚜簑sing Fusion;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -6,18 +6,16 @@ using UnityEngine;
 
 public struct InGameDeck
 {
-    public int In_Hand_Count; // 手牌數目
-    public int Deck_Left_Count; // 牌組剩餘數目
-    public int id; // 牌組id
+    public int In_Hand_Count; 
+    public int Deck_Left_Count; 
+    public int id; 
 
-    private int[] CardOrder; // 改用普通數組
+    private int[] CardOrder; 
     public int CurrentIndex { get; set; }
 
-    // 初始化牌組順序的方法
     public void InitializeCardOrder(List<int> initialOrder)
     {
-        Debug.Log("初始化洗牌!");
-        CardOrder = new int[40]; // 固定大小為40
+        CardOrder = new int[40]; 
         for (int i = 0; i < initialOrder.Count && i < CardOrder.Length; i++)
         {
             CardOrder[i] = initialOrder[i];
@@ -27,10 +25,9 @@ public struct InGameDeck
 
     public int DrawNextCard()
     {
-        Debug.Log("抽一張牌!");
         if (CurrentIndex >= CardOrder.Length || Deck_Left_Count <= 0)
         {
-            return -1; // 牌組已空
+            return -1; 
         }
 
         int nextCard = CardOrder[CurrentIndex];
@@ -56,7 +53,7 @@ public struct InGameDeck
             tempList[j] = temp;
         }
 
-        // 將洗過的牌放回陣列
+        // 嚙瞇嚙羯嚙盤嚙踝蕭嚙瞑嚙踝蕭^嚙罷嚙瘠
         for (int i = 0; i < tempList.Count; i++)
         {
             CardOrder[CurrentIndex + i] = tempList[i];
@@ -118,14 +115,12 @@ public class PlayerStatus : NetworkBehaviour
         }
         Debug.Log("GameManager found");
 
-        // 等待 GameDeckManager 初始化完成
         while (GameDeckManager.Instance == null)
         {
             yield return new WaitForSeconds(0.1f);
         }
         Debug.Log("GameDeckManager found");
 
-        // 通知 Host
         Rpc_NotifyHost(runner.LocalPlayer, Object.Id);
     }
 
