@@ -4,6 +4,16 @@ using UnityEngine.SceneManagement;
 using System;
 using System.Collections.Generic;
 using Fusion.Sockets;
+using System.Linq;
+
+public class NetworkRunnerHandler : MonoBehaviour
+{
+    private void Awake()
+    {
+        // 確保這個組件在啟動時就被禁用
+        enabled = false;
+    }
+}
 
 public class NetworkManager : MonoBehaviour
 {
@@ -47,19 +57,26 @@ public class NetworkManager : MonoBehaviour
             var runnerObject = new GameObject("NetworkRunner");
             runnerObject.transform.parent = transform;
             _runner = runnerObject.AddComponent<NetworkRunner>();
+
             _sceneManager = runnerObject.AddComponent<NetworkSceneManagerDefault>();
+
+            var behaviourConfiguration = runnerObject.AddComponent<NetworkRunnerHandler>();
+            behaviourConfiguration.enabled = false;
+
             DontDestroyOnLoad(runnerObject);
         }
-
-        _runner.ProvideInput = true;
 
         var startGameArgs = new StartGameArgs()
         {
             GameMode = GameMode.Shared,
             SessionName = "TestRoom",
             Scene = SceneRef.FromIndex(SceneManager.GetActiveScene().buildIndex),
-            SceneManager = _sceneManager
+            SceneManager = _sceneManager,
+            PlayerCount = 2,          // 設定最大玩家數
+            DisableNATPunchthrough = true  // 如果你不需要 NAT 穿透
         };
+
+        _runner.ProvideInput = true;
 
         if (_runner.IsSharedModeMasterClient)
         {
@@ -80,6 +97,7 @@ public class NetworkManager : MonoBehaviour
             else
             {
                 _isRunning = true;
+
                 runner_has_spawned();
                 //OnNetworkRunnerInitialized?.Invoke(_runner);
 
