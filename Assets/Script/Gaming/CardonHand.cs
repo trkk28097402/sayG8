@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
 using Fusion;
@@ -53,7 +53,7 @@ public class CardOnHand : NetworkBehaviour
         }
 
         playerStatus = PlayerStatus.Instance;
-        Debug.Log("µù¥Uª±®aª¬ºA¨Æ¥ó");
+        Debug.Log("è¨»å†ŠçŽ©å®¶ç‹€æ…‹äº‹ä»¶");
         playerStatus.OnInitialHandDrawn += HandleInitialHand;
         playerStatus.OnCardDrawn += HandleNewCard;
         playerStatus.OnCardRemoved += HandleCardRemoved;
@@ -80,7 +80,7 @@ public class CardOnHand : NetworkBehaviour
 
     public void HandleInitialHand(NetworkedCardData[] cards)
     {
-        Debug.Log("·Ç³Æ©âµP°Êµe");
+        Debug.Log("æº–å‚™æŠ½ç‰Œå‹•ç•«");
         StartCoroutine(DrawInitialCards(cards));
     }
 
@@ -212,7 +212,6 @@ public class CardOnHand : NetworkBehaviour
     {
         if (cardsInHand.Count == 0) return;
 
-        // Àò¨ú Canvas 
         Canvas canvas = GetComponentInParent<Canvas>();
         if (canvas == null)
         {
@@ -220,20 +219,23 @@ public class CardOnHand : NetworkBehaviour
             return;
         }
 
-        // Àò¨ú Canvas ªº RectTransform
         RectTransform canvasRect = canvas.GetComponent<RectTransform>();
         float canvasWidth = canvasRect.rect.width;
 
-        // ¨Ï¥Î Canvas ¼e«×¨Ó­pºâ¥d¤ù¦ì¸m
-        float slotWidth = canvasWidth / MaxCards;
-        float startX = -canvasWidth / 2 + slotWidth / 2;
+        float usableWidth = canvasWidth * 0.9f; 
+        float cardSpacing = usableWidth / (MaxCards - 1); 
+
+        float startX = -usableWidth / 2;
 
         for (int i = 0; i < cardsInHand.Count; i++)
         {
             RectTransform cardRect = cardsInHand[i];
             if (cardRect != null)
             {
-                float xPos = startX + (i * slotWidth);
+                float xPos = cardsInHand.Count == 1 ?
+                    0 : 
+                    startX + (i * cardSpacing); 
+
                 Vector2 targetPosition = new Vector2(xPos, defaultYPosition);
 
                 cardRect.SetSiblingIndex(i);
@@ -282,15 +284,17 @@ public class CardOnHand : NetworkBehaviour
 
     public void RearrangeCards()
     {
-        if (cardsInHand.Count == 0) return;
+        if (cardsInHand.Count == 0) { Debug.Log("cardsInHand count = 0"); return; }
 
-        // ¦P¼Ë¨Ï¥Î Canvas ¼e«×
+        // åŒæ¨£ä½¿ç”¨ Canvas å¯¬åº¦
         Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null) return;
+        if (canvas == null) { Debug.Log("canvas is null!"); return; }
 
         RectTransform canvasRect = canvas.GetComponent<RectTransform>();
         float canvasWidth = canvasRect.rect.width;
         float slotWidth = canvasWidth / MaxCards;
+        Debug.Log($"canvaswidth:{canvasWidth}");
+
         float startX = -canvasWidth / 2 + slotWidth / 2;
 
         for (int i = 0; i < cardsInHand.Count; i++)
