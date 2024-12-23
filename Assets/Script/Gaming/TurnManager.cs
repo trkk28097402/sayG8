@@ -38,12 +38,16 @@ public class TurnManager : NetworkBehaviour
     private NetworkBool IsTimerRunning { get; set; }
 
     [Networked]
-    private float NetworkedRemainingTime { get; set; }
+    public float TimerDuration { get; set; }
+
+    [Networked]
+    private float TimerStartTime { get; set; }
 
     private const float TURN_DURATION = 30.0f;
     private const float WARNING_TIME = 5f;
     private bool hasPlayedWarningSound = false;
     private bool localInitialized = false;
+    private float localRemainingTime = 0f;
 
     public static TurnManager Instance { get; private set; }
     private GameManager gameManager;
@@ -221,11 +225,22 @@ public class TurnManager : NetworkBehaviour
         if (!Object.HasStateAuthority) return;
 
         Debug.Log($"Starting turn for player {player}");
-        TurnTimer = TickTimer.CreateFromSeconds(runner, TURN_DURATION);
         IsTimerRunning = true;
         hasPlayedWarningSound = false;
-        NetworkedRemainingTime = TURN_DURATION;
-        Rpc_PlayTurnStartSound();
+        TimerDuration = TURN_DURATION;
+        TimerStartTime = Time.time;
+        TurnTimer = TickTimer.CreateFromSeconds(Runner, TURN_DURATION);
+        Rpc_NotifyTurnStart(TimerStartTime);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_NotifyTurnStart(float startTime)
+    {
+        Debug.Log($"Turn started at time: {startTime}");
+        IsTimerRunning = true;
+        TimerStartTime = startTime;
+        localRemainingTime = TURN_DURATION;
+        PlaySound(turnStartSound);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -258,22 +273,25 @@ public class TurnManager : NetworkBehaviour
     {
         if (!IsFullyInitialized() || !IsGameStarted) return;
 
-        if (Object.HasStateAuthority && TurnTimer.IsRunning)
+        if (IsTimerRunning)
         {
-            float remainingTime = TurnTimer.RemainingTime(runner).GetValueOrDefault();
-            NetworkedRemainingTime = remainingTime;
-            IsTimerRunning = true;
+            float elapsedTime = Time.time - TimerStartTime;
+            localRemainingTime = Mathf.Max(0, TURN_DURATION - elapsedTime);
 
-            if (!hasPlayedWarningSound && remainingTime <= WARNING_TIME)
+            if (Object.HasStateAuthority)
             {
-                hasPlayedWarningSound = true;
-                Rpc_PlayTimeWarningSound();
-            }
+                if (!hasPlayedWarningSound && localRemainingTime <= WARNING_TIME)
+                {
+                    hasPlayedWarningSound = true;
+                    Rpc_PlayTimeWarningSound();
+                }
 
-            if (TurnTimer.Expired(runner))
-            {
-                Debug.Log("Turn timer expired, switching players");
-                SwitchToNextPlayer();
+                if (localRemainingTime <= 0)
+                {
+                    Debug.Log("Turn timer expired, switching players");
+                    IsTimerRunning = false;
+                    SwitchToNextPlayer();
+                }
             }
         }
 
@@ -290,8 +308,12 @@ public class TurnManager : NetworkBehaviour
     {
         if (timerText != null && IsTimerRunning)
         {
-            timerText.text = $"³Ñ¾l®É¶¡: {NetworkedRemainingTime:F1}¬í";
-            timerText.color = NetworkedRemainingTime <= WARNING_TIME ? Color.red : normalTextColor;
+            timerText.text = $"³Ñ¾l®É¶¡: {localRemainingTime:F1}¬í";
+            timerText.color = localRemainingTime <= WARNING_TIME ? Color.red : normalTextColor;
+        }
+        else if (timerText != null && !IsTimerRunning)
+        {
+            timerText.text = "";
         }
     }
 
@@ -347,8 +369,39 @@ public class TurnManager : NetworkBehaviour
 
     public float GetRemainingTime()
     {
-        if (!IsFullyInitialized() || !TurnTimer.IsRunning) return 0f;
-        return TurnTimer.RemainingTime(runner).GetValueOrDefault();
+        return localRemainingTime;
+    }
+
+    public void PauseTurnTimer()
+    {
+        if (Object.HasStateAuthority)
+        {
+            TimerDuration = localRemainingTime;
+            IsTimerRunning = false;
+            Rpc_SyncTimerState(false, localRemainingTime);
+        }
+    }
+
+    public void ResumeTurnTimer()
+    {
+        if (Object.HasStateAuthority)
+        {
+            TimerStartTime = Time.time;
+            IsTimerRunning = true;
+            Rpc_SyncTimerState(true, TimerDuration);
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_SyncTimerState(bool isRunning, float remainingTime)
+    {
+        IsTimerRunning = isRunning;
+        if (isRunning)
+        {
+            TimerStartTime = Time.time;
+            TimerDuration = remainingTime;
+            localRemainingTime = remainingTime;
+        }
     }
 
     private void OnDestroy()

@@ -215,11 +215,11 @@ public class GameManager : NetworkBehaviour
         for (int i = 0; i < ConnectedPlayerCount; i++)
         {
             players[i] = ConnectedPlayers.Get(i);
+            Debug.Log($"get connect : {players[i]}");
         }
         return players;
     }
 
-    // 新增：獲取對手的方法
     public PlayerRef GetOpponentPlayer(PlayerRef currentPlayer)
     {
         for (int i = 0; i < ConnectedPlayerCount; i++)

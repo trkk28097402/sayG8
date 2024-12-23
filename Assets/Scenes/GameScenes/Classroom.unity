@@ -11195,21 +11195,37 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
-      propertyPath: m_fontColor.b
-      value: 0.5773585
+    - target: {fileID: 1271532320175154478, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+      propertyPath: m_Value
+      value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
-      propertyPath: m_fontColor.g
+    - target: {fileID: 1271532320175154478, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+      propertyPath: m_Interactable
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1271532320175154478, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+      propertyPath: m_WholeNumbers
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+      propertyPath: m_text
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+      propertyPath: m_fontColor.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+      propertyPath: m_fontColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
       propertyPath: m_fontColor.r
-      value: 0.2825421
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
       propertyPath: m_fontColor32.rgba
-      value: 4287823944
+      value: 4279894015
       objectReference: {fileID: 0}
     - target: {fileID: 5608083629251211936, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
       propertyPath: m_Pivot.x
@@ -11295,11 +11311,37 @@ PrefabInstance:
       propertyPath: m_Name
       value: BarBlue
       objectReference: {fileID: 0}
+    - target: {fileID: 8382722556756378997, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+      propertyPath: m_FillAmount
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+--- !u!114 &5146951482810602672 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1271532320175154478, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+  m_PrefabInstance: {fileID: 5146951482810602671}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67db9e8f0e2ae9c40bc1e2b64352a6b4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &5146951482810602673 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+  m_PrefabInstance: {fileID: 5146951482810602671}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &7554797921247530010
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11377,6 +11419,14 @@ PrefabInstance:
       propertyPath: apiKey
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 5244949778325910740, guid: 4a3fd952f53d1c24c90889ffe0fac316, type: 3}
+      propertyPath: moodSlider
+      value: 
+      objectReference: {fileID: 5146951482810602672}
+    - target: {fileID: 5244949778325910740, guid: 4a3fd952f53d1c24c90889ffe0fac316, type: 3}
+      propertyPath: moodValueText
+      value: 
+      objectReference: {fileID: 5146951482810602673}
     - target: {fileID: 7441250883266617237, guid: 4a3fd952f53d1c24c90889ffe0fac316, type: 3}
       propertyPath: m_Name
       value: MoodEvaluator

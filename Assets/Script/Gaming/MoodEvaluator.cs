@@ -1,7 +1,4 @@
-﻿//#define USE_GPT4
-#define USE_CLAUDE
-
-using UnityEngine;
+﻿using UnityEngine;
 using System;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,6 +7,7 @@ using Fusion;
 using UnityEngine.Networking;
 using Newtonsoft.Json;
 using System.Linq;
+using System.Collections;
 
 public struct MoodState : INetworkStruct
 {
@@ -42,28 +40,6 @@ public class ImageUrl
     public string url;
 }
 
-#if USE_GPT4
-[Serializable]
-public class ChatRequest
-{
-    public string model = "gpt-4o";
-    public List<Message> messages;
-}
-
-[Serializable]
-public class ChatResponse
-{
-    public Choice[] choices;
-}
-
-[Serializable]
-public class Choice
-{
-    public Message message;
-}
-#endif
-
-#if USE_CLAUDE
 [Serializable]
 public class ClaudeRequest
 {
@@ -106,22 +82,16 @@ public class ClaudeResponse
     public string role;
     public List<ClaudeContent> content;
 }
-#endif
 
 public class MoodEvaluator : NetworkBehaviour
 {
     private const float WINNING_THRESHOLD = 100f;
-
-#if USE_GPT4
-    private const string OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-#elif USE_CLAUDE
     private const string CLAUDE_URL = "https://api.anthropic.com/v1/messages";
-#endif
 
     [SerializeField] private string apiKey;
-#if USE_CLAUDE
+    [SerializeField] private UnityEngine.UI.Slider moodSlider;
+    [SerializeField] private TMPro.TextMeshProUGUI moodValueText;
     [SerializeField] private string anthropicVersion = "2023-06-01";
-#endif
 
     [Networked]
     private NetworkDictionary<PlayerRef, MoodState> PlayerMoods { get; }
@@ -144,30 +114,97 @@ public class MoodEvaluator : NetworkBehaviour
         base.Spawned();
         gameManager = GameManager.Instance;
         playedCardsManager = FindObjectOfType<PlayedCardsManager>();
+
+        Debug.Log($"[MoodEvaluator] Spawned called, IsStateAuthority: {Object.HasStateAuthority}");
+
         if (Object.HasStateAuthority)
         {
-            InitializeMoods();
+            StartCoroutine(InitializeMoodsWithRetry());
+        }
+
+        // 所有玩家都請求初始氣氛值
+        if (Runner.LocalPlayer != null)
+        {
+            Rpc_RequestInitialMood(Runner.LocalPlayer);
         }
     }
 
+    private IEnumerator InitializeMoodsWithRetry()
+    {
+        while (gameManager.GetConnectedPlayers().Length < 2)
+        {
+            yield return new WaitForSeconds(1f);
+        }
+        InitializeMoods();
+    }
+
+    private string[] availableMoods = { "火爆", "敷衍", "嘲諷", "理性", "白目", "歡樂" };
+    private int moodIndex1, moodIndex2;
+
     private void InitializeMoods()
     {
-        string[] availableMoods = { "火爆", "幽默" };
+        var players = gameManager.GetConnectedPlayers();
+        if (players.Length < 2)
+        {
+            Debug.Log("等待更多玩家連接...");
+            return;
+        }
+
+        PlayerMoods.Clear();
         System.Random random = new System.Random();
 
-        foreach (var player in gameManager.GetConnectedPlayers())
+        // 為每個玩家分配不同情緒
+        var usedMoods = new HashSet<int>();
+        foreach (var player in players)
         {
-            int moodIndex = random.Next(availableMoods.Length);
+            int moodIndex;
+            do
+            {
+                moodIndex = random.Next(availableMoods.Length);
+            } while (usedMoods.Contains(moodIndex));
+
+            usedMoods.Add(moodIndex);
             var mood = new MoodState
             {
                 AssignedMood = availableMoods[moodIndex],
                 MoodValue = 0f
             };
             PlayerMoods.Add(player, mood);
+            Debug.Log($"玩家 {player} 的初始情緒為: {mood.AssignedMood}");
+        }
+    }
 
-            var tempList = new List<string>(availableMoods);
-            tempList.RemoveAt(moodIndex);
-            availableMoods = tempList.ToArray();
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void Rpc_RequestInitialMood(PlayerRef requestingPlayer)
+    {
+        if (!Object.HasStateAuthority) return;
+
+        if (PlayerMoods.TryGet(requestingPlayer, out var mood))
+        {
+            Debug.Log($"[MoodEvaluator] Sending initial mood to player {requestingPlayer}: {mood.MoodValue}");
+            Rpc_SyncMoodValue(requestingPlayer, mood.MoodValue, mood.AssignedMood);
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_SyncMoodValue(PlayerRef targetPlayer, float moodValue, NetworkString<_32> assignedMood)
+    {
+        Debug.Log($"[MoodEvaluator] Received mood sync - Player: {targetPlayer}, Value: {moodValue}, Mood: {assignedMood}");
+
+        if (targetPlayer == Runner.LocalPlayer)
+        {
+            UpdateMoodUI(moodValue);
+
+            if (PlayerMoods.TryGet(targetPlayer, out var currentMood))
+            {
+                var newMood = new MoodState
+                {
+                    AssignedMood = assignedMood,
+                    MoodValue = moodValue
+                };
+                PlayerMoods.Set(targetPlayer, newMood);
+            }
         }
     }
 
@@ -219,7 +256,6 @@ public class MoodEvaluator : NetworkBehaviour
                          $"ImagePath: {cardContext.ImagePath}");
 
                 Rpc_RecordCardPlayed(player, deckData.deckName, cardData.cardId + 1, cardData.imagePath.Value);
-                //gameHistory.Add(cardContext);
 
                 Debug.Log($"{Runner.LocalPlayer} 請求評估氣氛");
                 Rpc_RequestEvaluateMood(Runner.LocalPlayer);
@@ -279,17 +315,17 @@ public class MoodEvaluator : NetworkBehaviour
         if (gameHistory.Count == 0)
         {
             return JsonConvert.SerializeObject(new Dictionary<string, object>
-            {
-                { "火爆", 0 },
-                { "幽默", 0 },
-                { "分析", "沒有足夠的卡牌記錄進行分析" }
-            });
+        {
+            { "火爆", 0 },
+            { "敷衍", 0 },
+            { "嘲諷", 0 },
+            { "理性", 0 },
+            { "白目", 0 },
+            { "歡樂", 0 },
+            { "分析", "沒有足夠的卡牌記錄進行分析" }
+        });
         }
 
-#if USE_GPT4
-        var messages = new List<Message>();
-#elif USE_CLAUDE
-        var claudeMessages = new List<ClaudeMessage>();
         string systemPrompt = @"你是一個專業的圖像氛圍分析師，專門分析網路梗圖和表情包。請根據以下步驟進行分析：
 
         1. 圖像解讀：
@@ -310,24 +346,23 @@ public class MoodEvaluator : NetworkBehaviour
         請使用以下 JSON 格式回應（必須嚴格遵守此格式）：
         {
             ""火爆"": <-20到+20的數值>,
-            ""幽默"": <-20到+20的數值>,
+            ""敷衍"": <-20到+20的數值>,
+            ""嘲諷"": <-20到+20的數值>,
+            ""理性"": <-20到+20的數值>,
+            ""白目"": <-20到+20的數值>,
+            ""歡樂"": <-20到+20的數值>,
             ""分析"": ""<簡短說明你對圖片氛圍的理解以及為何給出這樣的評分>""
         }
 
         評分說明：
         - 正值表示增強該氛圍，負值表示減弱該氛圍
         - 絕對值越大表示影響越強烈
-        - 火爆和幽默可以同時存在，也可以互相抵消
+        - 不同氛圍可以同時存在
 
         注意：
         1. 請使用英文標點符號
         2. 僅返回 JSON 格式內容，不要有任何額外文字
         3. 分析要精簡有力，直指要害，不需要詳細描述圖片內容";
-#endif
-
-#if USE_GPT4
-        messages.Add(new Message { role = "system", content = systemPrompt });
-#endif
 
         // 準備用戶消息內容
         var contentParts = new List<ClaudeContent>();
@@ -353,7 +388,6 @@ public class MoodEvaluator : NetworkBehaviour
                     byte[] imageBytes = cardTexture.EncodeToJPG();
                     string base64Data = Convert.ToBase64String(imageBytes);
 
-                    // Add context text before image
                     string contextText = i < gameHistory.Count - 1 ?
                         $"這是先前第{i + 1}張出的牌" :
                         "這是最新出的一張牌，請主要分析這張圖片的氛圍";
@@ -388,7 +422,7 @@ public class MoodEvaluator : NetworkBehaviour
             text = "請分析圖中展現的氛圍，並按照規定的 JSON 格式回應。"
         });
 
-#if USE_CLAUDE
+        var claudeMessages = new List<ClaudeMessage>();
         claudeMessages.Add(new ClaudeMessage
         {
             role = "user",
@@ -404,59 +438,8 @@ public class MoodEvaluator : NetworkBehaviour
         };
 
         return await SendClaudeRequest(request);
-#elif USE_GPT4
-        messages.Add(new Message
-        {
-            role = "user",
-            content = "請分析以下圖像所展現的對話氛圍",
-            parts = userParts
-        });
-
-        return await SendGPTRequest(messages);
-#else
-        throw new Exception("No AI model defined. Please define either USE_GPT4 or USE_CLAUDE.");
-#endif
     }
 
-#if USE_GPT4
-    private async Task<string> SendGPTRequest(List<Message> messages)
-    {
-        var request = new ChatRequest
-        {
-            model = "gpt-4o",
-            messages = messages
-        };
-
-        using (var webRequest = new UnityWebRequest(OPENAI_URL, "POST"))
-        {
-            byte[] jsonToSend = new UTF8Encoding().GetBytes(JsonConvert.SerializeObject(request));
-            webRequest.uploadHandler = new UploadHandlerRaw(jsonToSend);
-            webRequest.downloadHandler = new DownloadHandlerBuffer();
-            webRequest.SetRequestHeader("Content-Type", "application/json");
-            webRequest.SetRequestHeader("Authorization", $"Bearer {apiKey}");
-
-            var operation = webRequest.SendWebRequest();
-            while (!operation.isDone)
-                await Task.Yield();
-
-            if (webRequest.result == UnityWebRequest.Result.Success)
-            {
-                var response = JsonConvert.DeserializeObject<ChatResponse>(webRequest.downloadHandler.text);
-                if (response?.choices == null || response.choices.Length == 0)
-                {
-                    throw new Exception("Empty or invalid API response");
-                }
-                return response.choices[0].message.content;
-            }
-            else
-            {
-                throw new Exception($"API request failed: {webRequest.error}");
-            }
-        }
-    }
-#endif
-
-#if USE_CLAUDE
     private async Task<string> SendClaudeRequest(ClaudeRequest request)
     {
         try
@@ -506,7 +489,6 @@ public class MoodEvaluator : NetworkBehaviour
             throw;
         }
     }
-#endif
 
     private void ProcessMoodResponse(string response)
     {
@@ -532,14 +514,12 @@ public class MoodEvaluator : NetworkBehaviour
                 response = response.Substring(0, response.Length - 3);
             }
 
-            // 使用特定的序列化設置來處理 Unicode 字符
             var settings = new JsonSerializerSettings
             {
                 StringEscapeHandling = StringEscapeHandling.Default,
                 Formatting = Formatting.None
             };
 
-            // 定義一個匿名類型來映射回應結構
             var moodData = JsonConvert.DeserializeObject<Dictionary<string, object>>(
                 response,
                 settings
@@ -550,9 +530,9 @@ public class MoodEvaluator : NetworkBehaviour
                 throw new Exception("Failed to parse mood data");
             }
 
-            // 處理每個玩家的心情
             foreach (var player in gameManager.GetConnectedPlayers())
             {
+                // Debug.Log($"{player} is connected!");
                 if (PlayerMoods.TryGet(player, out var currentMood))
                 {
                     string moodKey = currentMood.AssignedMood.Value;
@@ -562,9 +542,9 @@ public class MoodEvaluator : NetworkBehaviour
                         UpdatePlayerMood(player, moodChange);
                     }
                 }
+                else Debug.Log($"{player} do not have {currentMood}");
             }
 
-            // 記錄分析結果
             if (moodData.TryGetValue("分析", out object analysis))
             {
                 string analysisText = analysis?.ToString() ?? "無分析內容";
@@ -578,29 +558,28 @@ public class MoodEvaluator : NetworkBehaviour
                 playedCardsManager.Rpc_NotifyMoodEvaluationComplete();
             }
         }
-        catch (Exception e)
+        catch (Exception e)  // handle失敗情況，可以讓遊戲繼續
+
         {
             Debug.LogError($"Error processing mood response: {e.Message}\nResponse: {response}");
 
-            // 嘗試手動解析作為備用方案
             try
             {
-                // 使用簡單的字符串處理來提取數值
-                if (response.Contains("\"火爆\":") && response.Contains("\"幽默\":"))
+                if (response.Contains($"{availableMoods[moodIndex1]}") && response.Contains($"{availableMoods[moodIndex2]}"))
                 {
-                    var fireMatch = System.Text.RegularExpressions.Regex.Match(response, @"""火爆""\s*:\s*(-?\d+)");
-                    var humorMatch = System.Text.RegularExpressions.Regex.Match(response, @"""幽默""\s*:\s*(-?\d+)");
+                    var firstMatch = System.Text.RegularExpressions.Regex.Match(response, $@"""{availableMoods[moodIndex1]}""\s*:\s*(-?\d+)");
+                    var secondMatch = System.Text.RegularExpressions.Regex.Match(response, $@"""{availableMoods[moodIndex2]}""\s*:\s*(-?\d+)");
 
-                    if (fireMatch.Success && humorMatch.Success)
+                    if (firstMatch.Success && secondMatch.Success)
                     {
-                        float fireValue = float.Parse(fireMatch.Groups[1].Value);
-                        float humorValue = float.Parse(humorMatch.Groups[1].Value);
+                        float firstMoodValue = float.Parse(firstMatch.Groups[1].Value);
+                        float secondMoodValue = float.Parse(secondMatch.Groups[1].Value);
 
                         foreach (var player in gameManager.GetConnectedPlayers())
                         {
                             if (PlayerMoods.TryGet(player, out var currentMood))
                             {
-                                float moodChange = currentMood.AssignedMood.Value == "火爆" ? fireValue : humorValue;
+                                float moodChange = currentMood.AssignedMood.Value == availableMoods[moodIndex1] ? firstMoodValue : secondMoodValue;
                                 UpdatePlayerMood(player, moodChange);
                             }
                         }
@@ -608,6 +587,7 @@ public class MoodEvaluator : NetworkBehaviour
                         Debug.Log("Successfully extracted mood values using backup method");
                     }
                 }
+
 
                 if (Object.HasStateAuthority && playedCardsManager != null)
                 {
@@ -625,6 +605,8 @@ public class MoodEvaluator : NetworkBehaviour
     {
         try
         {
+            Debug.Log($"[MoodEvaluator] Parsing mood value of type {value?.GetType()}: {value}");
+
             if (value == null) return 0f;
 
             if (value is string stringValue)
@@ -632,27 +614,33 @@ public class MoodEvaluator : NetworkBehaviour
                 stringValue = stringValue.Trim().Replace("+", "");
                 if (float.TryParse(stringValue, out float result))
                 {
+                    Debug.Log($"[MoodEvaluator] Successfully parsed string value to float: {result}");
                     return result;
                 }
             }
             else if (value is long longValue)
             {
+                Debug.Log($"[MoodEvaluator] Converting long value to float: {longValue}");
                 return (float)longValue;
             }
             else if (value is int intValue)
             {
+                Debug.Log($"[MoodEvaluator] Converting int value to float: {intValue}");
                 return (float)intValue;
             }
             else if (value is float floatValue)
             {
+                Debug.Log($"[MoodEvaluator] Already a float value: {floatValue}");
                 return floatValue;
             }
             else if (value is double doubleValue)
             {
+                Debug.Log($"[MoodEvaluator] Converting double value to float: {doubleValue}");
                 return (float)doubleValue;
             }
             else if (value is decimal decimalValue)
             {
+                Debug.Log($"[MoodEvaluator] Converting decimal value to float: {decimalValue}");
                 return (float)decimalValue;
             }
 
@@ -660,32 +648,54 @@ public class MoodEvaluator : NetworkBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogError($"Error parsing mood value: {ex.Message}");
+            Debug.LogError($"[MoodEvaluator] Error parsing mood value: {ex.Message}");
             return 0f;
         }
     }
 
     private void UpdatePlayerMood(PlayerRef player, float change)
     {
+        Debug.Log($"[MoodEvaluator] Updating mood for player {player} with change: {change}");
+
         if (PlayerMoods.TryGet(player, out var currentMood))
         {
+            float newMoodValue = Mathf.Clamp(currentMood.MoodValue + change, 0f, WINNING_THRESHOLD);
+            Debug.Log($"[MoodEvaluator] Current mood: {currentMood.MoodValue}, New mood after change: {newMoodValue}");
+
             var newMood = new MoodState
             {
                 AssignedMood = currentMood.AssignedMood,
-                MoodValue = Mathf.Clamp(currentMood.MoodValue + change, 0f, WINNING_THRESHOLD)
+                MoodValue = newMoodValue
             };
             PlayerMoods.Set(player, newMood);
 
-            Rpc_NotifyMoodUpdate(player, newMood.MoodValue, change);
+            Rpc_SyncMoodValue(player, newMoodValue, currentMood.AssignedMood);
+            Rpc_NotifyMoodUpdate(player, newMoodValue, change);
         }
     }
 
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void Rpc_NotifyMoodUpdate(PlayerRef player, float newValue, float change)
+    private void UpdateMoodUI(float value)
     {
-        string playerName = player == Runner.LocalPlayer ? "你" : "對手";
-        string changeText = change >= 0 ? $"+{change}" : change.ToString();
-        Debug.Log($"{playerName}的{PlayerMoods.Get(player).AssignedMood}氛圍值 {changeText} (當前: {newValue})");
+        if (!UnityEngine.Application.isPlaying) return;
+
+        if (moodSlider != null)
+        {
+            Debug.Log($"[MoodEvaluator] Updating slider to {value}");
+            moodSlider.value = value;
+        }
+        else
+        {
+            Debug.LogError("[MoodEvaluator] Mood slider reference is missing!");
+        }
+
+        if (moodValueText != null)
+        {
+            moodValueText.text = value.ToString("F1");
+        }
+        else
+        {
+            Debug.LogError("[MoodEvaluator] Mood text reference is missing!");
+        }
     }
 
     private void CheckWinCondition()
@@ -698,6 +708,14 @@ public class MoodEvaluator : NetworkBehaviour
                 return;
             }
         }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_NotifyMoodUpdate(PlayerRef player, float newValue, float change)
+    {
+        string playerName = player == Runner.LocalPlayer ? "你" : "對手";
+        string changeText = change >= 0 ? $"+{change}" : change.ToString();
+        Debug.Log($"{playerName}的{PlayerMoods.Get(player).AssignedMood}氛圍值 {changeText} (當前: {newValue})");
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
