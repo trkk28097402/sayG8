@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 7299ec14ee074f34d929a9f54248556a
+guid: ee0ddd0f9190f794e9f9d37a05a23e73
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -7,8 +7,13 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: Light Oak Wood Grain
-    second: {fileID: 2100000, guid: a5f7ec772c30cca4f9f75c4303ff0687, type: 2}
+      name: Window
+    second: {fileID: 2100000, guid: 972aa9bab5bdea849bcd7e60c087930c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: window_frame
+    second: {fileID: 2100000, guid: 4f171b4a7780bc84dae008186144dcec, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

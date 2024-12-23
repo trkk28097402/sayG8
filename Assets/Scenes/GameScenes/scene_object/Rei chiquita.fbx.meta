@@ -1,14 +1,9 @@
 fileFormatVersion: 2
-guid: 7299ec14ee074f34d929a9f54248556a
+guid: 9f3f46d8ac1370d46b1227f6b11aa0d7
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects:
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: Light Oak Wood Grain
-    second: {fileID: 2100000, guid: a5f7ec772c30cca4f9f75c4303ff0687, type: 2}
+  externalObjects: {}
   materials:
     materialImportMode: 2
     materialName: 0
