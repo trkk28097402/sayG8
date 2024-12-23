@@ -161,6 +161,9 @@ public class CardOnHand : NetworkBehaviour
     {
         var cardObject = Instantiate(cardPrefab, deckPosition.position, Quaternion.identity, handContainer);
         var cardRect = cardObject.GetComponent<RectTransform>();
+        Debug.Log($"Card {cardData.cardName.Value} rect size: {cardRect.rect.size}");
+        Debug.Log($"Card {cardData.cardName.Value} position: {cardRect.anchoredPosition}");
+
         var cardInteraction = cardObject.GetComponent<CardInteraction>();
 
         if (cardRect == null || cardInteraction == null)

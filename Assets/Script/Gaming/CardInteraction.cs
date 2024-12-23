@@ -55,7 +55,9 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
     {
         if (isSelected) return;
 
+        Debug.Log($"Card {cardData.cardName.Value} entered"); 
         isHovered = true;
+
         rectTransform.DOKill();
         rectTransform.DOScale(Vector3.one * hoverScale, hoverDuration);
         rectTransform.DOAnchorPos(basePosition + new Vector2(0, hoverHeight), hoverDuration);

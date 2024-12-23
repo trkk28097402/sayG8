@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 6339727612575977261}
   - component: {fileID: 47785922770510755}
   - component: {fileID: 6109610690278694540}
-  - component: {fileID: 2225667218351390874}
   - component: {fileID: 8789124587190562364}
   m_Layer: 5
   m_Name: CardPosition_tmp
@@ -96,21 +95,6 @@ MonoBehaviour:
   NestedObjects: []
   NetworkedBehaviours:
   - {fileID: 8789124587190562364}
---- !u!114 &2225667218351390874
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8997003718271116952}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef2c29f1a7027b840b3acac895e04684, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  hoverHeight: 50
-  hoverScale: 1.2
-  hoverDuration: 0.2
 --- !u!114 &8789124587190562364
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -126,3 +110,7 @@ MonoBehaviour:
   cardPrefab: {fileID: 0}
   deckPosition: {fileID: 0}
   handContainer: {fileID: 0}
+  cardSelectLayer: {fileID: 0}
+  defaultYPosition: 0
+  drawDuration: 0.5
+  drawDelay: 0.2

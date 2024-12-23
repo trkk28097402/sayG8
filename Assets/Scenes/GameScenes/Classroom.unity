@@ -595,7 +595,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 2100000, guid: 24dd13ef17564124d8af24455f5245f2, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -10205,6 +10205,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 47785922770510755, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
+      propertyPath: m_Material
+      value: 
+      objectReference: {fileID: 2100000, guid: 24dd13ef17564124d8af24455f5245f2, type: 2}
+    - target: {fileID: 47785922770510755, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_RaycastTarget
       value: 0
       objectReference: {fileID: 0}
@@ -10310,7 +10314,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6845406186426836810, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 300
+      value: 200
       objectReference: {fileID: 0}
     - target: {fileID: 6845406186426836810, guid: 789fe40fd460e3540b65b701b5a95146, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -10340,7 +10344,8 @@ PrefabInstance:
       propertyPath: m_Name
       value: CardPosition_tmp
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 0}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
