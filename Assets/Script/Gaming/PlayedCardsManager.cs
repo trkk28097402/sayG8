@@ -20,15 +20,17 @@ public class PlayedCardsManager : NetworkBehaviour
     [SerializeField] private Image playAreaImage;
 
     [Header("Settings")]
-    [SerializeField] private float cardSpacing = 150f;
     [SerializeField] private float playAnimationDuration = 0.5f;
     [SerializeField] private Vector2 centerPosition = new Vector2(0, 0);
-    [SerializeField] private Vector2 restPosition = new Vector2(-400, 0);
+    [SerializeField] private int maxVisibleCards = 3;
+    [SerializeField] private float cardSpacing = 20f;
 
     [Networked, Capacity(40)]
     private NetworkArray<PlayedCardInfo> PlayedCards { get; }
     [Networked]
     private int CurrentPlayedCardCount { get; set; }
+    [Networked]
+    private NetworkBool IsWaitingForMoodEvaluation { get; set; }
 
     private List<RectTransform> playedCardObjects = new List<RectTransform>();
     private NetworkRunner runner;
@@ -36,6 +38,8 @@ public class PlayedCardsManager : NetworkBehaviour
     private bool isInitialized = false;
     private GameDeckDatabase gameDeckDatabase;
     private MoodEvaluator moodEvaluator;
+    private Queue<PlayedCardInfo> cardProcessingQueue = new Queue<PlayedCardInfo>();
+    private bool isProcessingCard = false;
 
     private RectTransform PlayArea => playAreaImage.rectTransform;
 
@@ -79,6 +83,12 @@ public class PlayedCardsManager : NetworkBehaviour
 
     public void PlayCard(NetworkedCardData cardData, int handIndex)
     {
+        if (!isInitialized || isProcessingCard || IsWaitingForMoodEvaluation)
+        {
+            Debug.Log("Cannot play card now - system not ready, processing another card, or waiting for mood evaluation");
+            return;
+        }
+
         Debug.Log($"Attempting to play card with index {handIndex}");
 
         if (runner == null)
@@ -120,117 +130,194 @@ public class PlayedCardsManager : NetworkBehaviour
             PlayedCards.Set(CurrentPlayedCardCount, newCard);
             CurrentPlayedCardCount++;
 
-            Rpc_NotifyCardPlayed(handIndex, player, cardId, deckId);
+            IsWaitingForMoodEvaluation = true;
+            Rpc_NotifyCardPlayed(handIndex, player, cardId, deckId, CurrentPlayedCardCount - 1);
+        }
+    }
 
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    public void Rpc_NotifyMoodEvaluationComplete()
+    {
+        if (Object.HasStateAuthority)
+        {
+            IsWaitingForMoodEvaluation = false;
             TurnManager.Instance.SwitchToNextPlayer();
         }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void Rpc_NotifyCardPlayed(int handIndex, PlayerRef player, int cardId, int deckId)
+    private void Rpc_NotifyCardPlayed(int handIndex, PlayerRef player, int cardId, int deckId, int cardIndex)
     {
-        Debug.Log($"Card played notification received: Player {player}, Card {cardId}");
-
-        // 移除玩家手牌
-        if (player == runner.LocalPlayer)
+        try
         {
-            if (GameManager.Instance.localPlayerCards.TryGetValue(player, out var playerCard))
+            Debug.Log($"Card played notification received: Player {player}, Card {cardId}, Index {cardIndex}");
+
+            // 處理本地玩家的手牌移除
+            if (player == runner.LocalPlayer)
             {
-                Debug.Log($"Removing card {handIndex} from player {player}'s hand");
-                playerCard.HandleCardRemoved(handIndex);
+                if (GameManager.Instance.localPlayerCards.TryGetValue(player, out var playerCard))
+                {
+                    Debug.Log($"Removing card {handIndex} from player {player}'s hand");
+                    playerCard.HandleCardRemoved(handIndex);
+                }
             }
-            else
+
+            PlayedCardInfo cardInfo = new PlayedCardInfo
             {
-                Debug.LogError($"Player {player} not found in GameManager's dictionary");
+                PlayerRef = player,
+                CardId = cardId,
+                DeckId = deckId
+            };
+
+            cardProcessingQueue.Enqueue(cardInfo);
+
+            if (!isProcessingCard)
+            {
+                StartCoroutine(ProcessCardQueue());
+            }
+
+            // 評估氣氛值（只在本地玩家出牌時）
+            if (moodEvaluator != null && player == runner.LocalPlayer)
+            {
+                var deckData = gameDeckDatabase.GetDeckById(deckId);
+                NetworkedCardData cardData = new NetworkedCardData
+                {
+                    cardId = cardId,
+                    cardName = $"Card {cardId + 1}",
+                    imagePath = $"{deckData.deck_path}/{cardId + 1}"
+                };
+                moodEvaluator.OnCardPlayed(cardData, player);
             }
         }
-
-        PlayedCardInfo cardInfo = new PlayedCardInfo
+        catch (Exception e)
         {
-            PlayerRef = player,
-            CardId = cardId,
-            DeckId = deckId
-        };
+            Debug.LogError($"Error in Rpc_NotifyCardPlayed: {e.Message}\n{e.StackTrace}");
+            isProcessingCard = false;
+        }
+    }
 
-        CreatePlayedCard(cardInfo);
-
-        // 評估氣氛值
-        if (moodEvaluator != null && player == runner.LocalPlayer) // 只有自己打出的牌才呼叫
+    private IEnumerator ProcessCardQueue()
+    {
+        if (isProcessingCard)
         {
-            var deckData = gameDeckDatabase.GetDeckById(deckId);
+            yield break;
+        }
+
+        isProcessingCard = true;
+
+        while (cardProcessingQueue.Count > 0)
+        {
+            
+            PlayedCardInfo cardInfo = cardProcessingQueue.Dequeue();
+            yield return StartCoroutine(CreatePlayedCardCoroutine(cardInfo));
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        isProcessingCard = false;
+    }
+
+    private IEnumerator CreatePlayedCardCoroutine(PlayedCardInfo cardInfo)
+    {
+        if (!isInitialized) yield break;
+
+        GameObject cardObj = null;
+        RectTransform cardRect = null;
+
+        try
+        {
+            cardObj = Instantiate(playedCardPrefab, PlayArea);
+            cardRect = cardObj.GetComponent<RectTransform>();
+
+            cardRect.anchorMin = new Vector2(0.5f, 0.5f);
+            cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRect.pivot = new Vector2(0.5f, 0.5f);
+
+            GameDeckData deckData = gameDeckDatabase.GetDeckById(cardInfo.DeckId);
             NetworkedCardData cardData = new NetworkedCardData
             {
-                cardId = cardId,
-                cardName = $"Card {cardId + 1}",
-                imagePath = $"{deckData.deck_path}/{cardId + 1}"
+                cardId = cardInfo.CardId,
+                cardName = $"Card {cardInfo.CardId + 1}",
+                imagePath = $"{deckData.deck_path}/{cardInfo.CardId + 1}"
             };
-            moodEvaluator.OnCardPlayed(cardData, player);
+
+            UpdateCardVisual(cardObj, cardData);
+
+            Vector2 startPos = GetStartPosition(cardInfo.PlayerRef);
+            cardRect.anchoredPosition = startPos;
         }
-    }
-
-    public override void FixedUpdateNetwork()
-    {
-        if (!isInitialized) return;
-
-        while (playedCardObjects.Count < CurrentPlayedCardCount)
+        catch (Exception e)
         {
-            PlayedCardInfo cardInfo = PlayedCards.Get(playedCardObjects.Count);
-            CreatePlayedCard(cardInfo);
+            Debug.LogError($"Error setting up card: {e.Message}");
+            if (cardObj != null) Destroy(cardObj);
+            yield break;
         }
-    }
 
-    private void CreatePlayedCard(PlayedCardInfo cardInfo)
-    {
-        GameObject cardObj = Instantiate(playedCardPrefab, PlayArea);
-        RectTransform cardRect = cardObj.GetComponent<RectTransform>();
-
-        cardRect.anchorMin = new Vector2(0.5f, 0.5f);
-        cardRect.anchorMax = new Vector2(0.5f, 0.5f);
-        cardRect.pivot = new Vector2(0.5f, 0.5f);
-
-        GameDeckData deckData = gameDeckDatabase.GetDeckById(cardInfo.DeckId);
-        NetworkedCardData cardData = new NetworkedCardData
+        // 處理舊卡牌的移除
+        if (playedCardObjects.Count >= maxVisibleCards)
         {
-            cardId = cardInfo.CardId,
-            cardName = $"Card {cardInfo.CardId}",
-            imagePath = $"{deckData.deck_path}/{cardInfo.CardId + 1}"
-        };
+            var oldestCard = playedCardObjects[0];
+            playedCardObjects.RemoveAt(0);
 
-        UpdateCardVisual(cardObj, cardData);
+            if (oldestCard != null)
+            {
+                oldestCard.DOAnchorPos(new Vector2(-1000, 0), playAnimationDuration * 0.5f)
+                    .SetEase(Ease.InQuad)
+                    .OnComplete(() => {
+                        if (oldestCard != null)
+                        {
+                            Destroy(oldestCard.gameObject);
+                        }
+                    });
+            }
 
-        Vector2 startPos = GetStartPosition(cardInfo.PlayerRef);
-        cardRect.anchoredPosition = startPos;
+            yield return new WaitForSeconds(playAnimationDuration * 0.5f);
+        }
 
-        // 卡片动画序列
-        Sequence cardSequence = DOTween.Sequence();
-
-        cardSequence.Append(cardRect.DOAnchorPos(centerPosition, playAnimationDuration)
-            .SetEase(Ease.OutBack));
-
-        cardSequence.AppendInterval(0.3f);
-
-        Vector2 finalPosition = restPosition + new Vector2(playedCardObjects.Count * cardSpacing, 0);
-
-        cardSequence.Append(cardRect.DOAnchorPos(finalPosition, playAnimationDuration)
-            .SetEase(Ease.OutBack));
-
+        // 添加新卡牌
         playedCardObjects.Add(cardRect);
+
+        // 執行動畫
+        yield return cardRect.DOAnchorPos(centerPosition, playAnimationDuration * 0.5f)
+            .SetEase(Ease.OutQuad)
+            .WaitForCompletion();
+
+        yield return new WaitForSeconds(0.2f);
+
+        RearrangeAllCards();
+
+        yield return new WaitForSeconds(playAnimationDuration);
+    }
+
+    private void RearrangeAllCards()
+    {
+        if (playedCardObjects == null || playedCardObjects.Count == 0) return;
+
+        float cardWidth = playedCardPrefab.GetComponent<RectTransform>().rect.width;
+        float totalWidth = (cardWidth + cardSpacing) * playedCardObjects.Count - cardSpacing;
+        float startX = -totalWidth / 2f;
+
+        for (int i = 0; i < playedCardObjects.Count; i++)
+        {
+            if (playedCardObjects[i] != null)
+            {
+                Vector2 newPos = new Vector2(startX + (cardWidth + cardSpacing) * i, 0);
+                playedCardObjects[i].DOAnchorPos(newPos, playAnimationDuration)
+                    .SetEase(Ease.OutBack);
+            }
+        }
     }
 
     private Vector2 GetStartPosition(PlayerRef playerRef)
     {
-        if (playerRef == Runner.LocalPlayer)
-        {
-            return new Vector2(0, -300);
-        }
-        else
-        {
-            return new Vector2(0, 300);
-        }
+        return playerRef == Runner.LocalPlayer
+            ? new Vector2(0, -300)
+            : new Vector2(0, 300);
     }
 
     private void UpdateCardVisual(GameObject cardObject, NetworkedCardData data)
     {
+        if (cardObject == null) return;
+
         Image cardImage = cardObject.GetComponentInChildren<Image>();
         if (cardImage != null)
         {
@@ -252,15 +339,38 @@ public class PlayedCardsManager : NetworkBehaviour
         }
     }
 
+    private void OnRectTransformDimensionsChange()
+    {
+        if (isInitialized && playedCardObjects.Count > 0 && !isProcessingCard)
+        {
+            RearrangeAllCards();
+        }
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        if (!isInitialized) return;
+    }
+
     private void OnDestroy()
     {
-        foreach (var cardRect in playedCardObjects)
+        try
         {
-            if (cardRect != null)
+            DOTween.KillAll();
+            foreach (var cardRect in playedCardObjects)
             {
-                Destroy(cardRect.gameObject);
+                if (cardRect != null)
+                {
+                    Destroy(cardRect.gameObject);
+                }
             }
+            playedCardObjects.Clear();
+            cardProcessingQueue.Clear();
+            isProcessingCard = false;
         }
-        playedCardObjects.Clear();
+        catch (Exception e)
+        {
+            Debug.LogError($"Error in OnDestroy: {e.Message}\n{e.StackTrace}");
+        }
     }
 }

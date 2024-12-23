@@ -137,11 +137,13 @@ public class MoodEvaluator : NetworkBehaviour
     private List<PlayedCardContext> gameHistory = new List<PlayedCardContext>();
     private GameManager gameManager;
     private NetworkRunner runner;
+    private PlayedCardsManager playedCardsManager;
 
     public override void Spawned()
     {
         base.Spawned();
         gameManager = GameManager.Instance;
+        playedCardsManager = FindObjectOfType<PlayedCardsManager>();
         if (Object.HasStateAuthority)
         {
             InitializeMoods();
@@ -570,6 +572,11 @@ public class MoodEvaluator : NetworkBehaviour
             }
 
             CheckWinCondition();
+
+            if (Object.HasStateAuthority && playedCardsManager != null)
+            {
+                playedCardsManager.Rpc_NotifyMoodEvaluationComplete();
+            }
         }
         catch (Exception e)
         {
@@ -600,6 +607,11 @@ public class MoodEvaluator : NetworkBehaviour
 
                         Debug.Log("Successfully extracted mood values using backup method");
                     }
+                }
+
+                if (Object.HasStateAuthority && playedCardsManager != null)
+                {
+                    playedCardsManager.Rpc_NotifyMoodEvaluationComplete();
                 }
             }
             catch (Exception backupError)
