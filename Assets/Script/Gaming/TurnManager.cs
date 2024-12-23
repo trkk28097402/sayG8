@@ -1,4 +1,4 @@
-using Fusion;
+ï»¿using Fusion;
 using UnityEngine;
 using TMPro;
 using System.Collections;
@@ -118,7 +118,7 @@ public class TurnManager : NetworkBehaviour
 
     private void InitializeUI()
     {
-        if (turnText != null) turnText.text = "¹CÀ¸¶}©l...";
+        if (turnText != null) turnText.text = "éŠæˆ²é–‹å§‹...";
         if (timerText != null) timerText.text = "";
         if (firstPlayerAnnouncement != null)
         {
@@ -163,11 +163,11 @@ public class TurnManager : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_AnnounceFirstPlayer(PlayerRef firstPlayer)
     {
-        string playerName = firstPlayer == runner.LocalPlayer ? "§A" : "¹ï¤â";
+        string playerName = firstPlayer == runner.LocalPlayer ? "ä½ " : "å°æ‰‹";
 
         if (firstPlayerAnnouncement != null)
         {
-            firstPlayerAnnouncement.text = $"¹CÀ¸¶}©l¡I{playerName}¥ı¤â";
+            firstPlayerAnnouncement.text = $"éŠæˆ²é–‹å§‹ï¼{playerName}å…ˆæ‰‹";
             firstPlayerAnnouncement.gameObject.SetActive(true);
             StartCoroutine(HideAnnouncementAfterDelay());
         }
@@ -308,7 +308,7 @@ public class TurnManager : NetworkBehaviour
     {
         if (timerText != null && IsTimerRunning)
         {
-            timerText.text = $"³Ñ¾l®É¶¡: {localRemainingTime:F1}¬í";
+            timerText.text = $"å‰©é¤˜æ™‚é–“: {localRemainingTime:F1}ç§’";
             timerText.color = localRemainingTime <= WARNING_TIME ? Color.red : normalTextColor;
         }
         else if (timerText != null && !IsTimerRunning)
@@ -322,8 +322,8 @@ public class TurnManager : NetworkBehaviour
         if (turnText != null && IsGameStarted)
         {
             bool isLocalPlayerTurn = CurrentTurnPlayer == runner.LocalPlayer;
-            string playerName = isLocalPlayerTurn ? "§Aªº" : "¹ï¤âªº";
-            turnText.text = $"²{¦b¬O{playerName}¦^¦X";
+            string playerName = isLocalPlayerTurn ? "ä½ çš„" : "å°æ‰‹çš„";
+            turnText.text = $"ç¾åœ¨æ˜¯{playerName}å›åˆ";
             turnText.color = isLocalPlayerTurn ? turnHighlightColor : normalTextColor;
         }
     }

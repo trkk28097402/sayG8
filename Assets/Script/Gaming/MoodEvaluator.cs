@@ -108,13 +108,14 @@ public class MoodEvaluator : NetworkBehaviour
     private GameManager gameManager;
     private NetworkRunner runner;
     private PlayedCardsManager playedCardsManager;
+    private TurnManager turnManager;
 
     public override void Spawned()
     {
         base.Spawned();
         gameManager = GameManager.Instance;
         playedCardsManager = FindObjectOfType<PlayedCardsManager>();
-
+        turnManager = FindObjectOfType<TurnManager>();
         Debug.Log($"[MoodEvaluator] Spawned called, IsStateAuthority: {Object.HasStateAuthority}");
 
         if (Object.HasStateAuthority)
@@ -221,6 +222,12 @@ public class MoodEvaluator : NetworkBehaviour
             int deckId = GameDeckManager.Instance.GetPlayerDeck(player);
             Debug.Log($"OnCardPlayed called - Player: {player}, DeckId: {deckId}, CardId: {cardData.cardId}");
 
+            if (Object.HasStateAuthority && turnManager != null)
+            {
+                turnManager.PauseTurnTimer();
+            }
+
+            // Rest of the existing OnCardPlayed logic...
             if (deckId < 0)
             {
                 Debug.LogError($"Invalid deck ID {deckId} for player {player}. Ensure deck is properly assigned.");
@@ -251,12 +258,7 @@ public class MoodEvaluator : NetworkBehaviour
                     ImagePath = cardData.imagePath.Value
                 };
 
-                Debug.Log($"Created card context - Player: {cardContext.Player}, " +
-                         $"Deck: {cardContext.DeckName}, Card: {cardContext.CardNumber}, " +
-                         $"ImagePath: {cardContext.ImagePath}");
-
                 Rpc_RecordCardPlayed(player, deckData.deckName, cardData.cardId + 1, cardData.imagePath.Value);
-
                 Debug.Log($"{Runner.LocalPlayer} 請求評估氣氛");
                 Rpc_RequestEvaluateMood(Runner.LocalPlayer);
             }
@@ -553,9 +555,17 @@ public class MoodEvaluator : NetworkBehaviour
 
             CheckWinCondition();
 
-            if (Object.HasStateAuthority && playedCardsManager != null)
+            if (Object.HasStateAuthority)
             {
-                playedCardsManager.Rpc_NotifyMoodEvaluationComplete();
+                if (turnManager != null)
+                {
+                    turnManager.ResumeTurnTimer();
+                }
+
+                if (playedCardsManager != null)
+                {
+                    playedCardsManager.Rpc_NotifyMoodEvaluationComplete();
+                }
             }
         }
         catch (Exception e)  // handle失敗情況，可以讓遊戲繼續
