@@ -10,6 +10,7 @@ public class GameReadySystem : NetworkBehaviour
     [SerializeField] private Button readyButton;
     [SerializeField] private GameObject loadingUI;
     [SerializeField] private TextMeshProUGUI loadingText;
+    AudioManagerLobby audioManagerLobby;//yu
 
     private SceneRef[] availableScenes;
 
@@ -18,6 +19,13 @@ public class GameReadySystem : NetworkBehaviour
     [Networked] private NetworkDictionary<PlayerRef, bool> PlayersReady { get; }
 
     private bool isLoading = false;
+
+    //yu
+    private void Awake()
+    {
+        audioManagerLobby = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManagerLobby>();
+    }
+    //
 
     public override void Spawned()
     {
@@ -70,6 +78,7 @@ public class GameReadySystem : NetworkBehaviour
 
     private void OnReadyButtonClicked()
     {
+        audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);//yu
         if (isLoading) return;
 
         RPC_PlayerReady(Runner.LocalPlayer);

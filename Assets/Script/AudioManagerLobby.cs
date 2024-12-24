@@ -17,7 +17,7 @@ public class AudioManagerLobby : MonoBehaviour
         musicSource.clip = Lobby_BGM;
         musicSource.Play();
     }
-    public void PlaySoundEffectClassroom(AudioClip clip)
+    public void PlaySoundEffectLobby(AudioClip clip)
     {
         SFXSource.PlayOneShot(clip);
     }

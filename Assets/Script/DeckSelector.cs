@@ -4,6 +4,7 @@ using TMPro;
 using System.Collections.Generic;
 using Fusion;
 
+
 public class DeckSelector : NetworkBehaviour
 {
     [Header("UI Elements")]
@@ -16,15 +17,23 @@ public class DeckSelector : NetworkBehaviour
     [SerializeField] private TextMeshProUGUI deckNameText;
     [SerializeField] private TextMeshProUGUI deckDescriptionText;
     [SerializeField] private Image deckPreviewImage;
+    AudioManagerLobby audioManagerLobby;//yu
 
     private int currentDeckIndex = 0;
     private List<GameDeckData> availableDecks = new List<GameDeckData>();
     private Dictionary<string, Sprite> previewSprites = new Dictionary<string, Sprite>();
     private NetworkRunner runner;
+    
+    //yu
+    private void Awake()
+    {
+        audioManagerLobby = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManagerLobby>();
+    }
+    //
 
     private void Start()
     {
-
+        
     }
 
     public void Wait_Runner_Spawned() {
@@ -105,6 +114,7 @@ public class DeckSelector : NetworkBehaviour
 
     private void ChangeDeck(int direction)
     {
+        audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);//yu
         currentDeckIndex += direction;
 
         if (currentDeckIndex >= availableDecks.Count)
@@ -141,6 +151,7 @@ public class DeckSelector : NetworkBehaviour
     private void OpenDescriptPop()
     {
         Debug.Log("OpenDescriptPop---------------------------------");
+        audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);//yu
         panelPop.SetActive(false);
         deckDescriptPop.SetActive(true);
         
@@ -149,6 +160,7 @@ public class DeckSelector : NetworkBehaviour
     private void CloseDescriptPop()
     {
         Debug.Log("CloseDescriptPop----------------------------");
+        audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);//yu
         panelPop.SetActive(true);
         deckDescriptPop.SetActive(false);
         
