@@ -1180,7 +1180,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_PlayOnAwake: 1
-  m_Volume: 1
+  m_Volume: 0.1
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -1418,7 +1418,7 @@ MonoBehaviour:
   musicSource: {fileID: 1364537238}
   SFXSource: {fileID: 648970629}
   Lobby_BGM: {fileID: 8300000, guid: 3f4fe7857ad43e44ba3f2b76dce67e00, type: 3}
-  ClickSound: {fileID: 8300000, guid: 648370c328fafaa438d0a99eac4704f2, type: 3}
+  ClickSound: {fileID: 8300000, guid: 6bc11ca28b540a84692946ca5f98a67a, type: 3}
 --- !u!1 &1971146985
 GameObject:
   m_ObjectHideFlags: 0
