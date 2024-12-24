@@ -11,6 +11,7 @@ public class AudioManagerClassrroom : MonoBehaviour
     [Header("----------- Audio Clip -----------")]
     public AudioClip Nyan_BGM;
     public AudioClip CardTouchSound;
+    public AudioClip CardUseSound;
 
     private void Start()
     {
