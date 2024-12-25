@@ -94,7 +94,10 @@ public class MoodEvaluator : NetworkBehaviour
     [SerializeField] private string apiKey;
     [SerializeField] private UnityEngine.UI.Slider moodSlider;
     [SerializeField] private TMPro.TextMeshProUGUI moodValueText;
+    [SerializeField] private UnityEngine.UI.Slider opponentMoodSlider; 
+    [SerializeField] private TMPro.TextMeshProUGUI opponentMoodValueText; 
     [SerializeField] private string anthropicVersion = "2023-06-01";
+    [SerializeField] private GameObject responseBG;
 
     [Networked]
     private NetworkDictionary<PlayerRef, MoodState> PlayerMoods { get; }
@@ -124,6 +127,9 @@ public class MoodEvaluator : NetworkBehaviour
         turnManager = FindObjectOfType<TurnManager>();
         Debug.Log($"[MoodEvaluator] Spawned called, IsStateAuthority: {Object.HasStateAuthority}");
 
+        bool isObserver = ObserverManager.Instance != null &&
+                 ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
+
         if (Object.HasStateAuthority)
         {
             StartCoroutine(InitializeMoodsWithRetry());
@@ -137,10 +143,52 @@ public class MoodEvaluator : NetworkBehaviour
 
         if (analysisText != null)
         {
-            bool isObserver = ObserverManager.Instance != null &&
-                             ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
             analysisText.gameObject.SetActive(isObserver);
             analysisText.text = string.Empty;
+        }
+
+        if (responseBG != null)
+        {
+            analysisText.gameObject.SetActive(isObserver);
+        }
+
+        if (moodSlider != null)
+        {
+            moodSlider.value = 0f;
+        }
+        if (moodValueText != null)
+        {
+            moodValueText.text = "0.0";
+        }
+
+        if (opponentMoodSlider != null)
+        {
+            opponentMoodSlider.value = 0f;
+        }
+        if (opponentMoodValueText != null)
+        {
+            opponentMoodValueText.text = "0.0";
+        }
+
+        if (isObserver)
+        {
+            // 為觀察者設置初始狀態
+            var players = gameManager.GetConnectedPlayers();
+            foreach (var player in players)
+            {
+                if (PlayerMoods.TryGet(player, out var mood))
+                {
+                    UpdateMoodUI(mood.MoodValue, player);
+                }
+            }
+        }
+
+        UpdatePlayerLabels(isObserver);
+
+        // 請求初始氣氛值
+        if (Runner.LocalPlayer != null)
+        {
+            Rpc_RequestInitialMood(Runner.LocalPlayer);
         }
     }
 
@@ -207,20 +255,19 @@ public class MoodEvaluator : NetworkBehaviour
     {
         Debug.Log($"[MoodEvaluator] Received mood sync - Player: {targetPlayer}, Value: {moodValue}, Mood: {assignedMood}");
 
-        if (targetPlayer == Runner.LocalPlayer)
+        // 更新網路狀態
+        if (PlayerMoods.TryGet(targetPlayer, out var currentMood))
         {
-            UpdateMoodUI(moodValue);
-
-            if (PlayerMoods.TryGet(targetPlayer, out var currentMood))
+            var newMood = new MoodState
             {
-                var newMood = new MoodState
-                {
-                    AssignedMood = assignedMood,
-                    MoodValue = moodValue
-                };
-                PlayerMoods.Set(targetPlayer, newMood);
-            }
+                AssignedMood = assignedMood,
+                MoodValue = moodValue
+            };
+            PlayerMoods.Set(targetPlayer, newMood);
         }
+
+        // 更新UI
+        UpdateMoodUI(moodValue, targetPlayer);
     }
 
     public void OnCardPlayed(NetworkedCardData cardData, PlayerRef player)
@@ -700,27 +747,45 @@ public class MoodEvaluator : NetworkBehaviour
         }
     }
 
-    private void UpdateMoodUI(float value)
+    private void UpdateMoodUI(float value, PlayerRef player)
     {
         if (!UnityEngine.Application.isPlaying) return;
 
-        if (moodSlider != null)
-        {
-            Debug.Log($"[MoodEvaluator] Updating slider to {value}");
-            moodSlider.value = value;
-        }
-        else
-        {
-            Debug.LogError("[MoodEvaluator] Mood slider reference is missing!");
-        }
+        bool isObserver = ObserverManager.Instance != null &&
+                         ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
 
-        if (moodValueText != null)
+        if (isObserver)
         {
-            moodValueText.text = value.ToString("F1");
+            // 如果是觀察者，把第一個玩家的值顯示在左邊，第二個玩家的值顯示在右邊
+            var players = gameManager.GetConnectedPlayers();
+            if (players.Length >= 2)
+            {
+                if (player == players[0])
+                {
+                    if (moodSlider != null) moodSlider.value = value;
+                    if (moodValueText != null) moodValueText.text = value.ToString("F1");
+                }
+                else if (player == players[1])
+                {
+                    if (opponentMoodSlider != null) opponentMoodSlider.value = value;
+                    if (opponentMoodValueText != null) opponentMoodValueText.text = value.ToString("F1");
+                }
+            }
         }
         else
         {
-            Debug.LogError("[MoodEvaluator] Mood text reference is missing!");
+            // 原有的玩家邏輯
+            bool isLocalPlayer = player == Runner.LocalPlayer;
+            if (isLocalPlayer)
+            {
+                if (moodSlider != null) moodSlider.value = value;
+                if (moodValueText != null) moodValueText.text = value.ToString("F1");
+            }
+            else
+            {
+                if (opponentMoodSlider != null) opponentMoodSlider.value = value;
+                if (opponentMoodValueText != null) opponentMoodValueText.text = value.ToString("F1");
+            }
         }
     }
 
@@ -766,6 +831,57 @@ public class MoodEvaluator : NetworkBehaviour
             if (isObserver)
             {
                 analysisText.text = analysis;
+            }
+        }
+    }
+
+    [SerializeField] private TMPro.TextMeshProUGUI player1Label;
+    [SerializeField] private TMPro.TextMeshProUGUI player2Label;
+
+    private void UpdatePlayerLabels(bool isObserver)
+    {
+
+        // have bug
+        return;
+
+        var players = gameManager.GetConnectedPlayers();
+
+        //Debug.Log($"updatepklayerlabels: {players[0]},{players[1]}");
+
+        if (isObserver || players[0] == Runner.LocalPlayer)
+        {
+            if (player1Label != null)
+            {
+                if (PlayerMoods.TryGet(players[0], out var mood1))
+                {
+                    player1Label.text = $"玩家1 ({mood1.AssignedMood})";
+                }
+            }
+
+            if (player2Label != null)
+            {
+                if (PlayerMoods.TryGet(players[1], out var mood2))
+                {
+                    player2Label.text = $"玩家2 ({mood2.AssignedMood})";
+                }
+            }
+        }
+        else
+        {
+            if (player1Label != null)
+            {
+                if (PlayerMoods.TryGet(players[0], out var mood1))
+                {
+                    player1Label.text = $"玩家1 ({mood1.AssignedMood})";
+                }
+            }
+
+            if (player2Label != null)
+            {
+                if (PlayerMoods.TryGet(players[1], out var mood2))
+                {
+                    player2Label.text = $"玩家2 ({mood2.AssignedMood})";
+                }
             }
         }
     }
