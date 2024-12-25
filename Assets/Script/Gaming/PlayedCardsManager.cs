@@ -330,7 +330,8 @@ public class PlayedCardsManager : NetworkBehaviour
     {
         if (cardObject == null) return;
 
-        Image cardImage = cardObject.GetComponentInChildren<Image>();
+        Image[] images = cardObject.GetComponentsInChildren<Image>();
+        Image cardImage = images.Length > 0 ? images[images.Length - 1] : null;
         if (cardImage != null)
         {
             var sprite = Resources.Load<Sprite>(data.imagePath.Value);
