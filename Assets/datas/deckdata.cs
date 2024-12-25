@@ -21,7 +21,7 @@ public class GameDeckDatabase
             cardCount = 40,
             id = 0,
             preview_imgae_path = "UI/Deck_preview_Image/mygo_pre",
-            description = "From the famous anime \"MYGO\"",
+            description = "由知名動畫MyGO內容組成，含有大量實用對話，是能很好應對各種氣氛的的六邊形牌組",
             deck_path = "Decks/Mygo"
         },
         new GameDeckData
@@ -30,7 +30,7 @@ public class GameDeckDatabase
             cardCount = 40,
             id = 1,
             preview_imgae_path = "UI/Deck_preview_Image/spongebob_pre",
-            description = "From the famous cartoon \"Sponge Bob\"",
+            description = "童年回憶卡通海綿寶寶為主題，擁有各種嗆聲名言，是對於提升火爆值非常有幫助的牌組",
             deck_path = "Decks/SpongeBob"
         },
     };
