@@ -732,6 +732,7 @@ public class MoodEvaluator : NetworkBehaviour
     private void Rpc_AnnounceWinner(PlayerRef winner, NetworkString<_32> mood)
     {
         string playerName = winner == Runner.LocalPlayer ? "你" : "對手";
+        
         Debug.Log($"遊戲結束！{playerName}成功營造出{mood}的氛圍！");
     }
 }
