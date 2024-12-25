@@ -322,6 +322,18 @@ public class TurnManager : NetworkBehaviour
         if (turnText != null && IsGameStarted)
         {
             bool isLocalPlayerTurn = CurrentTurnPlayer == runner.LocalPlayer;
+
+            if (ObserverManager.Instance == null) Debug.Log("找不到觀察者管理員");
+            if (ObserverManager.Instance.IsPlayerObserver(runner.LocalPlayer)) Debug.Log("我是觀察者");
+
+                if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(runner.LocalPlayer))
+            {
+                string playerNum = CurrentTurnPlayer.PlayerId == 0 ? "玩家1" : "玩家2";
+                turnText.text = $"现在是{playerNum}的回合";
+                turnText.color = normalTextColor;
+                return;
+            }
+
             string playerName = isLocalPlayerTurn ? "你的" : "對手的";
             turnText.text = $"現在是{playerName}回合";
             turnText.color = isLocalPlayerTurn ? turnHighlightColor : normalTextColor;

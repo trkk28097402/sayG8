@@ -8,10 +8,6 @@ public class GameDeckManager : NetworkBehaviour
     {
         get
         {
-            if (instance == null)
-            {
-                Debug.LogWarning("GameDeckManager instance 不存在，請確保已經透過 NetworkRunner 生成");
-            }
             return instance;
         }
     }

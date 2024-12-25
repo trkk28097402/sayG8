@@ -139,7 +139,7 @@ public class GameReadySystem : NetworkBehaviour
         foreach (var player in Runner.ActivePlayers)
         {
             // 檢查是否為觀察者
-            if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(player)) 
+            if (ObserverManager.Instance.IsPlayerObserver(player)) 
             {
                 Debug.Log($"bypass observer {player}");
                 continue;

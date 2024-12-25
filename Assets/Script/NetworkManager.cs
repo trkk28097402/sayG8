@@ -1,16 +1,17 @@
-using Fusion;
+ï»¿using Fusion;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System;
 using System.Collections.Generic;
 using Fusion.Sockets;
 using System.Linq;
+using System.Collections;
 
 public class NetworkRunnerHandler : MonoBehaviour
 {
     private void Awake()
     {
-        // ½T«O³o­Ó²Õ¥ó¦b±Ò°Ê®É´N³Q¸T¥Î
+        // ç¢ºä¿é€™å€‹çµ„ä»¶åœ¨å•Ÿå‹•æ™‚å°±è¢«ç¦ç”¨
         enabled = false;
     }
 }
@@ -21,12 +22,41 @@ public class NetworkManager : MonoBehaviour
     private NetworkRunner _runner;
     private NetworkSceneManagerDefault _sceneManager;
     private bool _isRunning = false;
-
-    // Netwrok runner¥Í¦¨¨Æ¥ó
-    //public static event Action<NetworkRunner> OnNetworkRunnerInitialized;
-
-    // ½T«O NetworkManager ¬O³æ¨Ò
     public static NetworkManager Instance { get; private set; }
+
+    private IEnumerator WaitForObserverManagerAndRegister(PlayerRef player)
+    {
+        Debug.Log("ç­‰å¾… ObserverManager åˆå§‹åŒ–...");
+
+        ObserverManager observerManager = null;
+        float timeoutDuration = 10f; // 10ç§’è¶…æ—¶
+        float elapsedTime = 0f;
+
+        while (observerManager == null && elapsedTime < timeoutDuration)
+        {
+            observerManager = GameObject.FindObjectOfType<ObserverManager>();
+            if (observerManager == null)
+            {
+                elapsedTime += 0.1f;
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+
+        if (observerManager == null)
+        {
+            Debug.LogError("æ‰¾ä¸åˆ° ObserverManagerï¼");
+            yield break;
+        }
+
+        // ç­‰å¾… NetworkObject åˆå§‹åŒ–å®Œæˆ
+        while (observerManager.Object == null || !observerManager.Object.IsValid)
+        {
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        Debug.Log($"ObserverManager å·²æ‰¾åˆ°ä¸”åˆå§‹åŒ–å®Œæˆ");
+        observerManager.RegisterObserver(player);
+    }
 
     private void Awake()
     {
@@ -50,7 +80,6 @@ public class NetworkManager : MonoBehaviour
     {
         if (_isRunning) return;
 
-        // ½T«O¥u«Ø¥ß¤@¦¸ NetworkRunner
         if (_runner == null)
         {
             var runnerObject = new GameObject("NetworkRunner");
@@ -71,7 +100,7 @@ public class NetworkManager : MonoBehaviour
             SessionName = "TestRoom",
             Scene = SceneRef.FromIndex(SceneManager.GetActiveScene().buildIndex),
             SceneManager = _sceneManager,
-            PlayerCount = 4,          // ¼W¥[¨ì4¡A¤¹³\2­Óª±®a©M2­ÓÆ[¹îªÌ
+            PlayerCount = 4,
             DisableNATPunchthrough = true
         };
 
@@ -97,10 +126,7 @@ public class NetworkManager : MonoBehaviour
             else
             {
                 _isRunning = true;
-
                 runner_has_spawned();
-                //OnNetworkRunnerInitialized?.Invoke(_runner);
-
                 Debug.Log("Network Runner started successfully");
             }
         }
@@ -111,7 +137,8 @@ public class NetworkManager : MonoBehaviour
         }
     }
 
-    private void runner_has_spawned() {
+    private void runner_has_spawned()
+    {
         DeckSelector deckSelector = FindObjectOfType<DeckSelector>();
         deckSelector.Wait_Runner_Spawned();
     }
@@ -135,12 +162,9 @@ public class NetworkManager : MonoBehaviour
 
             if (player.PlayerId > 2)
             {
-                Debug.Log($"Player {player} joined as observer");
-                if (ObserverManager.Instance != null)
-                {
-                    ObserverManager.Instance.RegisterObserver(player);
-                }
-                return; // Æ[¹îªÌ¤£»İ­n¥Í¦¨¨¤¦â
+                Debug.Log($"ç©å®¶ {player} ä»¥è§€å¯Ÿè€…èº«ä»½åŠ å…¥");
+                _manager.StartCoroutine(_manager.WaitForObserverManagerAndRegister(player));
+                return;
             }
 
             if (player == runner.LocalPlayer && !_localPlayerSpawned)
@@ -161,10 +185,6 @@ public class NetworkManager : MonoBehaviour
                     _spawnedCharacters[player] = networkPlayerObject;
                     _localPlayerSpawned = true;
                     Debug.Log($"Successfully spawned character for player {player}");
-
-                    //networkPlayerObject.transform.position = spawnPosition;
-                    //Debug.Log($"Player pos: {networkPlayerObject.transform.position}");
-
                 }
             }
         }
@@ -190,7 +210,6 @@ public class NetworkManager : MonoBehaviour
         {
             Debug.Log($"OnShutdown: {shutdownReason}");
 
-            // ²M²z©Ò¦³¥Í¦¨ªºª«¥ó
             foreach (var kvp in _spawnedCharacters)
             {
                 if (kvp.Value != null && runner != null)
@@ -214,7 +233,6 @@ public class NetworkManager : MonoBehaviour
             _localPlayerSpawned = false;
         }
 
-        // ... ¨ä¥L¥²­nªº callback ¹ê§@ ...
         public void OnInput(NetworkRunner runner, NetworkInput input) { }
         public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
         public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }

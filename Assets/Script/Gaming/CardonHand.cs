@@ -26,6 +26,14 @@ public class CardOnHand : NetworkBehaviour
     {
         base.Spawned();
         Debug.Log("CardOnHand Spawned started");
+
+        if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer))
+        {
+            if (handContainer != null)
+                handContainer.gameObject.SetActive(false);
+            return;
+        }
+
         StartCoroutine(InitializeAfterSpawn());
     }
 

@@ -67,6 +67,13 @@ public class PlayedCardsManager : NetworkBehaviour
             }
         }
 
+        if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer))
+        {
+            isInitialized = true;
+            Debug.Log("PlayedCardsManager initialized for observer");
+            yield break;
+        }
+
         while (moodEvaluator == null)
         {
             moodEvaluator = FindObjectOfType<MoodEvaluator>();
@@ -83,6 +90,11 @@ public class PlayedCardsManager : NetworkBehaviour
 
     public void PlayCard(NetworkedCardData cardData, int handIndex)
     {
+        if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer))
+        {
+            return;
+        }
+
         if (!isInitialized || isProcessingCard || IsWaitingForMoodEvaluation)
         {
             Debug.Log("Cannot play card now - system not ready, processing another card, or waiting for mood evaluation");

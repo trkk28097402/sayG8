@@ -53,7 +53,6 @@ public struct InGameDeck
             tempList[j] = temp;
         }
 
-        // �N�~�L���P��^�}�C
         for (int i = 0; i < tempList.Count; i++)
         {
             CardOrder[CurrentIndex + i] = tempList[i];
@@ -97,6 +96,13 @@ public class PlayerStatus : NetworkBehaviour
         base.Spawned();
         Debug.Log("PlayerStatus.Spawned called");
         runner = Object.Runner;
+
+        if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(runner.LocalPlayer))
+        {
+            Debug.Log("Observer don't need to initialize deck");
+            return;
+        }
+
         StartCoroutine(InitializeAfterSpawn());
     }
 
