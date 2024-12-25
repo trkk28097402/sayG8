@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class AudioManagerClassrroom : MonoBehaviour
+public class AudioManagerClassroom : MonoBehaviour
 {
     [Header("----------- Audio Source -----------")]
     [SerializeField] AudioSource musicSource;

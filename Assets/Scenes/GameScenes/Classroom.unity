@@ -578,7 +578,7 @@ MonoBehaviour:
   musicSource: {fileID: 632794667}
   SFXSource: {fileID: 1831374412}
   Nyan_BGM: {fileID: 8300000, guid: 2709e5463645e604fb49bd71a899f893, type: 3}
-  CardTouchSound: {fileID: 8300000, guid: e6503fae29013ba4eadd20dfe68ef65c, type: 3}
+  CardTouchSound: {fileID: 8300000, guid: 808b71c24cb3d024bac8ab58a8b53e83, type: 3}
   CardUseSound: {fileID: 8300000, guid: 82dbcdd55c256ef48b4d13e999c460cb, type: 3}
 --- !u!4 &149629869
 Transform:

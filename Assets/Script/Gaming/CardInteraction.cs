@@ -23,6 +23,8 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
     [SerializeField] private float hoverScale = 1.2f;
     [SerializeField] private float hoverDuration = 0.2f;
 
+    AudioManagerClassroom audioManagerClassroom;//yu
+
     private void Update()
     {
         // 如果卡牌被選中且按下 Enter
@@ -43,6 +45,7 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
     private void Awake()
     {
+        audioManagerClassroom = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManagerClassroom>();//yu
         rectTransform = GetComponent<RectTransform>();
         originalParent = transform.parent;
         if (rectTransform != null)
@@ -82,6 +85,7 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
     private void ToggleSelected()
     {
+        audioManagerClassroom.PlaySoundEffectClassroom (audioManagerClassroom.CardTouchSound);//yu
         isSelected = !isSelected;
         if (isSelected)
         {
