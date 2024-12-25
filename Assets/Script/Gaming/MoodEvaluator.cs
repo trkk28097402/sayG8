@@ -243,7 +243,7 @@ public class MoodEvaluator : NetworkBehaviour
             var mood = new MoodState
             {
                 AssignedMood = availableMoods[moodIndex],
-                MoodValue = 0f
+                MoodValue = 50f
             };
             PlayerMoods.Add(player, mood);
             Debug.Log($"玩家 {player} 的初始情緒為: {mood.AssignedMood}");

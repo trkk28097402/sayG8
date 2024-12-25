@@ -23,7 +23,7 @@ public class PlayedCardsManager : NetworkBehaviour
     [SerializeField] private float playAnimationDuration = 0.5f;
     [SerializeField] private Vector2 centerPosition = new Vector2(0, 0);
     [SerializeField] private int maxVisibleCards = 3;
-    [SerializeField] private float cardSpacing = 20f;
+    [SerializeField] private float cardSpacing = 1000f;
 
     [Networked, Capacity(40)]
     private NetworkArray<PlayedCardInfo> PlayedCards { get; }
@@ -305,14 +305,18 @@ public class PlayedCardsManager : NetworkBehaviour
         if (playedCardObjects == null || playedCardObjects.Count == 0) return;
 
         float cardWidth = playedCardPrefab.GetComponent<RectTransform>().rect.width;
-        float totalWidth = (cardWidth + cardSpacing) * playedCardObjects.Count - cardSpacing;
-        float startX = -totalWidth / 2f;
+        int cardCount = playedCardObjects.Count;
 
-        for (int i = 0; i < playedCardObjects.Count; i++)
+        // 重新計算起始位置
+        float totalSpacing = cardSpacing * (cardCount - 1); // 只計算間隔的總寬度
+        float startX = -totalSpacing / 2f; // 從間隔的中心點開始
+
+        for (int i = 0; i < cardCount; i++)
         {
             if (playedCardObjects[i] != null)
             {
-                Vector2 newPos = new Vector2(startX + (cardWidth + cardSpacing) * i, 0);
+                // 簡化位置計算，直接使用間距
+                Vector2 newPos = new Vector2(startX + (cardSpacing * i), 0);
                 playedCardObjects[i].DOAnchorPos(newPos, playAnimationDuration)
                     .SetEase(Ease.OutBack);
             }

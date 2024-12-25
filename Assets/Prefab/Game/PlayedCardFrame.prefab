@@ -189,7 +189,6 @@ GameObject:
   - component: {fileID: 2820700817448387410}
   - component: {fileID: 3746986250635090661}
   - component: {fileID: 8207854092017162867}
-  - component: {fileID: 1016042009109307462}
   m_Layer: 5
   m_Name: PlayedCardFrame
   m_TagString: Untagged
@@ -257,19 +256,3 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_HorizontalFit: 0
   m_VerticalFit: 0
---- !u!114 &1016042009109307462
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8305825610952605449}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef2c29f1a7027b840b3acac895e04684, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  isSelected: 0
-  hoverHeight: 50
-  hoverScale: 1.2
-  hoverDuration: 0.2

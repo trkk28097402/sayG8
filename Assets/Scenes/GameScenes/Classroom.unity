@@ -1245,7 +1245,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
       propertyPath: m_text
-      value: 0
+      value: 50.0
       objectReference: {fileID: 0}
     - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
       propertyPath: m_fontColor.b
@@ -2537,7 +2537,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 437400793477793339, guid: 7d1454ae16d72144baa43d004dade011, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -324.77798
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 437400793477793339, guid: 7d1454ae16d72144baa43d004dade011, type: 3}
       propertyPath: m_LocalRotation.w
@@ -2582,6 +2582,10 @@ PrefabInstance:
     - target: {fileID: 3246682459756722737, guid: 7d1454ae16d72144baa43d004dade011, type: 3}
       propertyPath: SortKey
       value: 2700933568
+      objectReference: {fileID: 0}
+    - target: {fileID: 7711156465546239603, guid: 7d1454ae16d72144baa43d004dade011, type: 3}
+      propertyPath: cardSpacing
+      value: 1000
       objectReference: {fileID: 0}
     - target: {fileID: 7711156465546239603, guid: 7d1454ae16d72144baa43d004dade011, type: 3}
       propertyPath: playAreaImage
@@ -12332,7 +12336,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
       propertyPath: m_text
-      value: 0
+      value: 50.0
       objectReference: {fileID: 0}
     - target: {fileID: 3280080175499104679, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
       propertyPath: m_fontColor.b
