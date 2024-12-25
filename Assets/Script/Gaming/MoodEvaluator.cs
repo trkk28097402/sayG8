@@ -110,6 +110,8 @@ public class MoodEvaluator : NetworkBehaviour
     private PlayedCardsManager playedCardsManager;
     private TurnManager turnManager;
 
+    [SerializeField] private TMPro.TextMeshProUGUI analysisText; // 用於顯示分析結果的UI文字
+
     public override void Spawned()
     {
         base.Spawned();
@@ -127,6 +129,14 @@ public class MoodEvaluator : NetworkBehaviour
         if (Runner.LocalPlayer != null)
         {
             Rpc_RequestInitialMood(Runner.LocalPlayer);
+        }
+
+        if (analysisText != null)
+        {
+            bool isObserver = ObserverManager.Instance != null &&
+                             ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
+            analysisText.gameObject.SetActive(isObserver);
+            analysisText.text = string.Empty;
         }
     }
 
@@ -551,6 +561,8 @@ public class MoodEvaluator : NetworkBehaviour
             {
                 string analysisText = analysis?.ToString() ?? "無分析內容";
                 Debug.Log($"情緒分析: {analysisText}");
+
+                Rpc_UpdateAnalysisText(analysisText);
             }
 
             CheckWinCondition();
@@ -734,5 +746,22 @@ public class MoodEvaluator : NetworkBehaviour
         string playerName = winner == Runner.LocalPlayer ? "你" : "對手";
         
         Debug.Log($"遊戲結束！{playerName}成功營造出{mood}的氛圍！");
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_UpdateAnalysisText(string analysis)
+    {
+        if (analysisText != null)
+        {
+            // 只有觀察者可以看到分析文字
+            bool isObserver = ObserverManager.Instance != null &&
+                             ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
+
+            analysisText.gameObject.SetActive(isObserver);
+            if (isObserver)
+            {
+                analysisText.text = analysis;
+            }
+        }
     }
 }
