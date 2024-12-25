@@ -12739,6 +12739,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 620538973}
     - target: {fileID: 5244949778325910740, guid: 4a3fd952f53d1c24c90889ffe0fac316, type: 3}
+      propertyPath: winnerText
+      value: 
+      objectReference: {fileID: 1971955467}
+    - target: {fileID: 5244949778325910740, guid: 4a3fd952f53d1c24c90889ffe0fac316, type: 3}
       propertyPath: analysisText
       value: 
       objectReference: {fileID: 1142555395}
