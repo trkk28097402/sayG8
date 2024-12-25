@@ -8,6 +8,9 @@ using UnityEngine.Networking;
 using Newtonsoft.Json;
 using System.Linq;
 using System.Collections;
+using DG.Tweening;
+using TMPro;
+using UnityEngine.UI;
 
 public struct MoodState : INetworkStruct
 {
@@ -109,6 +112,7 @@ public class MoodEvaluator : NetworkBehaviour
     private NetworkRunner runner;
     private PlayedCardsManager playedCardsManager;
     private TurnManager turnManager;
+    private TurnNotificationManager turnNotificationManager;
 
     [SerializeField] private TMPro.TextMeshProUGUI analysisText; // 用於顯示分析結果的UI文字
 
@@ -744,7 +748,8 @@ public class MoodEvaluator : NetworkBehaviour
     private void Rpc_AnnounceWinner(PlayerRef winner, NetworkString<_32> mood)
     {
         string playerName = winner == Runner.LocalPlayer ? "你" : "對手";
-        
+        string msg = $"{winner}成功達成目標氣氛了";
+        turnNotificationManager.ShowNotification(msg, new Color(0f,0f,1f));
         Debug.Log($"遊戲結束！{playerName}成功營造出{mood}的氛圍！");
     }
 

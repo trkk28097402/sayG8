@@ -222,7 +222,7 @@ public class TurnNotificationManager : NetworkBehaviour
         ShowNotification(message, color);
     }
 
-    private void ShowNotification(string message, Color textColor)
+    public void ShowNotification(string message, Color textColor)
     {
         if (!isInitialized || !notificationPanel || !notificationText || !panelRect || !panelCanvasGroup)
         {
