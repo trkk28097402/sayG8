@@ -128,8 +128,8 @@ public class MoodEvaluator : NetworkBehaviour
     private NetworkRunner runner;
     private PlayedCardsManager playedCardsManager;
     private TurnManager turnManager;
-    private TurnNotificationManager turnNotificationManager;
 
+    [SerializeField] private TMPro.TextMeshProUGUI winnerText;
     [SerializeField] private TMPro.TextMeshProUGUI analysisText; // 用於顯示分析結果的UI文字
 
     public override void Spawned()
@@ -171,7 +171,7 @@ public class MoodEvaluator : NetworkBehaviour
         }
         if (moodValueText != null)
         {
-            moodValueText.text = "0.0";
+            moodValueText.text = "50.0";
         }
 
         if (opponentMoodSlider != null)
@@ -183,6 +183,11 @@ public class MoodEvaluator : NetworkBehaviour
             opponentMoodValueText.text = "0.0";
         }
 
+        if (winnerText != null)
+        {
+            winnerText.gameObject.SetActive(false); 
+        }
+
         if (isObserver)
         {
             // 為觀察者設置初始狀態
@@ -192,6 +197,22 @@ public class MoodEvaluator : NetworkBehaviour
                 if (PlayerMoods.TryGet(player, out var mood))
                 {
                     UpdateMoodUI(mood.MoodValue, player);
+                }
+            }
+        }
+
+        if (Runner.LocalPlayer != null && PlayerMoods.TryGet(Runner.LocalPlayer, out var localMood))
+        {
+            UpdateMoodIcon(localMood.AssignedMood, true);
+
+            // 尋找對手並更新其icon
+            var players = gameManager.GetConnectedPlayers();
+            foreach (var player in players)
+            {
+                if (player != Runner.LocalPlayer && PlayerMoods.TryGet(player, out var opponentMood))
+                {
+                    UpdateMoodIcon(opponentMood.AssignedMood, false);
+                    break;
                 }
             }
         }
@@ -255,10 +276,10 @@ public class MoodEvaluator : NetworkBehaviour
     private void Rpc_RequestInitialMood(PlayerRef requestingPlayer)
     {
         if (!Object.HasStateAuthority) return;
-        
+
         if (PlayerMoods.TryGet(requestingPlayer, out var mood))
         {
-            Debug.Log($"[MoodEvaluator] Sending initial mood to player {requestingPlayer}: {mood.MoodValue}");
+            Debug.Log($"[MoodEvaluator] Sending initial mood to player {requestingPlayer}: {mood.MoodValue}, Mood: {mood.AssignedMood}");
             Rpc_SyncMoodValue(requestingPlayer, mood.MoodValue, mood.AssignedMood);
         }
     }
@@ -279,8 +300,15 @@ public class MoodEvaluator : NetworkBehaviour
             PlayerMoods.Set(targetPlayer, newMood);
         }
 
-        // 更新UI
+        // 更新UI和icon
         UpdateMoodUI(moodValue, targetPlayer);
+
+        // 直接調用更新icon (以防 UpdateMoodUI 中的條件沒有觸發)
+        if (PlayerMoods.TryGet(targetPlayer, out var mood))
+        {
+            bool isLocalPlayer = targetPlayer == Runner.LocalPlayer;
+            UpdateMoodIcon(mood.AssignedMood, isLocalPlayer);
+        }
     }
 
     public void OnCardPlayed(NetworkedCardData cardData, PlayerRef player)
@@ -831,9 +859,15 @@ public class MoodEvaluator : NetworkBehaviour
     private void Rpc_AnnounceWinner(PlayerRef winner, NetworkString<_32> mood)
     {
         string playerName = winner == Runner.LocalPlayer ? "你" : "對手";
-        string msg = $"{winner}成功達成目標氣氛了";
-        turnNotificationManager.ShowNotification(msg, new Color(0f,0f,1f));
-        Debug.Log($"遊戲結束！{playerName}成功營造出{mood}的氛圍！");
+        string msg = $"{playerName}成功營造出{mood}的氛圍！";
+
+        if (winnerText != null)
+        {
+            winnerText.text = msg;
+            winnerText.gameObject.SetActive(true); // 確保文字可見
+        }
+
+        Debug.Log($"遊戲結束！{msg}");
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
