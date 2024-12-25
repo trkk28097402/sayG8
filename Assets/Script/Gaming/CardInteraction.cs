@@ -19,7 +19,7 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
     private bool isHovered = false;
     public bool isSelected = false;
 
-    [SerializeField] private float hoverHeight = 50f;
+    [SerializeField] private float hoverHeight = 100f;
     [SerializeField] private float hoverScale = 1.2f;
     [SerializeField] private float hoverDuration = 0.2f;
 
@@ -104,7 +104,7 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
                 Sequence selectSequence = DOTween.Sequence();
 
                 // 移動到畫面中心，放大，並回正
-                selectSequence.Append(rectTransform.DOAnchorPos(Vector2.zero, 0.3f).SetEase(Ease.OutCubic));
+                selectSequence.Append(rectTransform.DOAnchorPos(new Vector2(0, 200), 0.3f).SetEase(Ease.OutCubic));
                 selectSequence.Join(rectTransform.DOScale(Vector3.one * 1.5f, 0.3f).SetEase(Ease.OutCubic)); // 使用固定的放大倍數
                 selectSequence.Join(rectTransform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.OutCubic));
 

@@ -94,6 +94,7 @@ public class MoodEvaluator : NetworkBehaviour
     [SerializeField] private UnityEngine.UI.Slider opponentMoodSlider; 
     [SerializeField] private TMPro.TextMeshProUGUI opponentMoodValueText; 
     [SerializeField] private string anthropicVersion = "2023-06-01";
+    [SerializeField] private GameObject responseBG;
 
     [Networked]
     private NetworkDictionary<PlayerRef, MoodState> PlayerMoods { get; }
@@ -122,6 +123,9 @@ public class MoodEvaluator : NetworkBehaviour
         turnManager = FindObjectOfType<TurnManager>();
         Debug.Log($"[MoodEvaluator] Spawned called, IsStateAuthority: {Object.HasStateAuthority}");
 
+        bool isObserver = ObserverManager.Instance != null &&
+                 ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
+
         if (Object.HasStateAuthority)
         {
             StartCoroutine(InitializeMoodsWithRetry());
@@ -135,10 +139,13 @@ public class MoodEvaluator : NetworkBehaviour
 
         if (analysisText != null)
         {
-            bool isObserver = ObserverManager.Instance != null &&
-                             ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
             analysisText.gameObject.SetActive(isObserver);
             analysisText.text = string.Empty;
+        }
+
+        if (responseBG != null)
+        {
+            analysisText.gameObject.SetActive(isObserver);
         }
 
         if (moodSlider != null)
@@ -157,6 +164,27 @@ public class MoodEvaluator : NetworkBehaviour
         if (opponentMoodValueText != null)
         {
             opponentMoodValueText.text = "0.0";
+        }
+
+        if (isObserver)
+        {
+            // 為觀察者設置初始狀態
+            var players = gameManager.GetConnectedPlayers();
+            foreach (var player in players)
+            {
+                if (PlayerMoods.TryGet(player, out var mood))
+                {
+                    UpdateMoodUI(mood.MoodValue, player);
+                }
+            }
+        }
+
+        UpdatePlayerLabels(isObserver);
+
+        // 請求初始氣氛值
+        if (Runner.LocalPlayer != null)
+        {
+            Rpc_RequestInitialMood(Runner.LocalPlayer);
         }
     }
 
@@ -719,28 +747,40 @@ public class MoodEvaluator : NetworkBehaviour
     {
         if (!UnityEngine.Application.isPlaying) return;
 
-        bool isLocalPlayer = player == Runner.LocalPlayer;
+        bool isObserver = ObserverManager.Instance != null &&
+                         ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
 
-        if (isLocalPlayer)
+        if (isObserver)
         {
-            if (moodSlider != null)
+            // 如果是觀察者，把第一個玩家的值顯示在左邊，第二個玩家的值顯示在右邊
+            var players = gameManager.GetConnectedPlayers();
+            if (players.Length >= 2)
             {
-                moodSlider.value = value;
-            }
-            if (moodValueText != null)
-            {
-                moodValueText.text = value.ToString("F1");
+                if (player == players[0])
+                {
+                    if (moodSlider != null) moodSlider.value = value;
+                    if (moodValueText != null) moodValueText.text = value.ToString("F1");
+                }
+                else if (player == players[1])
+                {
+                    if (opponentMoodSlider != null) opponentMoodSlider.value = value;
+                    if (opponentMoodValueText != null) opponentMoodValueText.text = value.ToString("F1");
+                }
             }
         }
         else
         {
-            if (opponentMoodSlider != null)
+            // 原有的玩家邏輯
+            bool isLocalPlayer = player == Runner.LocalPlayer;
+            if (isLocalPlayer)
             {
-                opponentMoodSlider.value = value;
+                if (moodSlider != null) moodSlider.value = value;
+                if (moodValueText != null) moodValueText.text = value.ToString("F1");
             }
-            if (opponentMoodValueText != null)
+            else
             {
-                opponentMoodValueText.text = value.ToString("F1");
+                if (opponentMoodSlider != null) opponentMoodSlider.value = value;
+                if (opponentMoodValueText != null) opponentMoodValueText.text = value.ToString("F1");
             }
         }
     }
@@ -769,6 +809,7 @@ public class MoodEvaluator : NetworkBehaviour
     private void Rpc_AnnounceWinner(PlayerRef winner, NetworkString<_32> mood)
     {
         string playerName = winner == Runner.LocalPlayer ? "你" : "對手";
+        
         Debug.Log($"遊戲結束！{playerName}成功營造出{mood}的氛圍！");
     }
 
@@ -785,6 +826,57 @@ public class MoodEvaluator : NetworkBehaviour
             if (isObserver)
             {
                 analysisText.text = analysis;
+            }
+        }
+    }
+
+    [SerializeField] private TMPro.TextMeshProUGUI player1Label;
+    [SerializeField] private TMPro.TextMeshProUGUI player2Label;
+
+    private void UpdatePlayerLabels(bool isObserver)
+    {
+
+        // have bug
+        return;
+
+        var players = gameManager.GetConnectedPlayers();
+
+        //Debug.Log($"updatepklayerlabels: {players[0]},{players[1]}");
+
+        if (isObserver || players[0] == Runner.LocalPlayer)
+        {
+            if (player1Label != null)
+            {
+                if (PlayerMoods.TryGet(players[0], out var mood1))
+                {
+                    player1Label.text = $"玩家1 ({mood1.AssignedMood})";
+                }
+            }
+
+            if (player2Label != null)
+            {
+                if (PlayerMoods.TryGet(players[1], out var mood2))
+                {
+                    player2Label.text = $"玩家2 ({mood2.AssignedMood})";
+                }
+            }
+        }
+        else
+        {
+            if (player1Label != null)
+            {
+                if (PlayerMoods.TryGet(players[0], out var mood1))
+                {
+                    player1Label.text = $"玩家1 ({mood1.AssignedMood})";
+                }
+            }
+
+            if (player2Label != null)
+            {
+                if (PlayerMoods.TryGet(players[1], out var mood2))
+                {
+                    player2Label.text = $"玩家2 ({mood2.AssignedMood})";
+                }
             }
         }
     }
