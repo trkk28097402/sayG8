@@ -91,6 +91,8 @@ public class MoodEvaluator : NetworkBehaviour
     [SerializeField] private string apiKey;
     [SerializeField] private UnityEngine.UI.Slider moodSlider;
     [SerializeField] private TMPro.TextMeshProUGUI moodValueText;
+    [SerializeField] private UnityEngine.UI.Slider opponentMoodSlider; 
+    [SerializeField] private TMPro.TextMeshProUGUI opponentMoodValueText; 
     [SerializeField] private string anthropicVersion = "2023-06-01";
 
     [Networked]
@@ -137,6 +139,24 @@ public class MoodEvaluator : NetworkBehaviour
                              ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
             analysisText.gameObject.SetActive(isObserver);
             analysisText.text = string.Empty;
+        }
+
+        if (moodSlider != null)
+        {
+            moodSlider.value = 0f;
+        }
+        if (moodValueText != null)
+        {
+            moodValueText.text = "0.0";
+        }
+
+        if (opponentMoodSlider != null)
+        {
+            opponentMoodSlider.value = 0f;
+        }
+        if (opponentMoodValueText != null)
+        {
+            opponentMoodValueText.text = "0.0";
         }
     }
 
@@ -203,20 +223,19 @@ public class MoodEvaluator : NetworkBehaviour
     {
         Debug.Log($"[MoodEvaluator] Received mood sync - Player: {targetPlayer}, Value: {moodValue}, Mood: {assignedMood}");
 
-        if (targetPlayer == Runner.LocalPlayer)
+        // 更新網路狀態
+        if (PlayerMoods.TryGet(targetPlayer, out var currentMood))
         {
-            UpdateMoodUI(moodValue);
-
-            if (PlayerMoods.TryGet(targetPlayer, out var currentMood))
+            var newMood = new MoodState
             {
-                var newMood = new MoodState
-                {
-                    AssignedMood = assignedMood,
-                    MoodValue = moodValue
-                };
-                PlayerMoods.Set(targetPlayer, newMood);
-            }
+                AssignedMood = assignedMood,
+                MoodValue = moodValue
+            };
+            PlayerMoods.Set(targetPlayer, newMood);
         }
+
+        // 更新UI
+        UpdateMoodUI(moodValue, targetPlayer);
     }
 
     public void OnCardPlayed(NetworkedCardData cardData, PlayerRef player)
@@ -696,27 +715,33 @@ public class MoodEvaluator : NetworkBehaviour
         }
     }
 
-    private void UpdateMoodUI(float value)
+    private void UpdateMoodUI(float value, PlayerRef player)
     {
         if (!UnityEngine.Application.isPlaying) return;
 
-        if (moodSlider != null)
-        {
-            Debug.Log($"[MoodEvaluator] Updating slider to {value}");
-            moodSlider.value = value;
-        }
-        else
-        {
-            Debug.LogError("[MoodEvaluator] Mood slider reference is missing!");
-        }
+        bool isLocalPlayer = player == Runner.LocalPlayer;
 
-        if (moodValueText != null)
+        if (isLocalPlayer)
         {
-            moodValueText.text = value.ToString("F1");
+            if (moodSlider != null)
+            {
+                moodSlider.value = value;
+            }
+            if (moodValueText != null)
+            {
+                moodValueText.text = value.ToString("F1");
+            }
         }
         else
         {
-            Debug.LogError("[MoodEvaluator] Mood text reference is missing!");
+            if (opponentMoodSlider != null)
+            {
+                opponentMoodSlider.value = value;
+            }
+            if (opponentMoodValueText != null)
+            {
+                opponentMoodValueText.text = value.ToString("F1");
+            }
         }
     }
 
