@@ -43,7 +43,7 @@ public class TurnManager : NetworkBehaviour
     [Networked]
     private float TimerStartTime { get; set; }
 
-    private const float TURN_DURATION = 30.0f;
+    private const float TURN_DURATION = 60.0f;
     private const float WARNING_TIME = 5f;
     private bool hasPlayedWarningSound = false;
     private bool localInitialized = false;
