@@ -1349,7 +1349,7 @@ PrefabInstance:
     - target: {fileID: 7732837003170283512, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: c2c208d0e9ab6f342b17b9fc7d37f1ef, type: 3}
+      objectReference: {fileID: 21300000, guid: 757aca40e2f354941bd73d5a434ea807, type: 3}
     - target: {fileID: 8036333050746500998, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
       propertyPath: m_Name
       value: PurpleFill
@@ -12163,6 +12163,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7732837003170283512, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 37a5af1216582534fa11063c5bf2e27a, type: 3}
     - target: {fileID: 8061110981574317761, guid: 0a2300d3591cb7d48ba2621b9d6b7149, type: 3}
       propertyPath: m_Name
       value: BarBlue
