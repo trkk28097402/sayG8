@@ -858,7 +858,9 @@ public class MoodEvaluator : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_AnnounceWinner(PlayerRef winner, NetworkString<_32> mood)
     {
-        string playerName = winner == Runner.LocalPlayer ? "你" : "對手";
+        string playerName;
+        if (ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer)) playerName = winner.PlayerId == 1 ? "玩家一" : "玩家二";
+        else playerName = winner == Runner.LocalPlayer ? "你" : "對手";
         string msg = $"{playerName}成功營造出{mood}的氛圍！";
 
         if (winnerText != null)
