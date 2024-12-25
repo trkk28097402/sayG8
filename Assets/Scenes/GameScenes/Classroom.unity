@@ -1590,7 +1590,7 @@ AudioSource:
   m_PlayOnAwake: 1
   m_Volume: 0.3
   m_Pitch: 1
-  Loop: 0
+  Loop: 1
   Mute: 0
   Spatialize: 0
   SpatializePostEffects: 0
@@ -2567,7 +2567,7 @@ PrefabInstance:
     - target: {fileID: 7711156465546239603, guid: 7d1454ae16d72144baa43d004dade011, type: 3}
       propertyPath: playedCardPrefab
       value: 
-      objectReference: {fileID: 4780400295785745922, guid: ceca2242bb2f9114693ff677d1a1fcb8, type: 3}
+      objectReference: {fileID: 8305825610952605449, guid: f5834745a29e0c345a2f1651d9c9510b, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
