@@ -18,7 +18,6 @@ public class NetworkRunnerHandler : MonoBehaviour
 public class NetworkManager : MonoBehaviour
 {
     [SerializeField] private GameObject PlayerPrefab;
-    [SerializeField] private NetworkPrefabRef gameDeckManagerPrefab;
     private NetworkRunner _runner;
     private NetworkSceneManagerDefault _sceneManager;
     private bool _isRunning = false;
@@ -72,15 +71,16 @@ public class NetworkManager : MonoBehaviour
             SessionName = "TestRoom",
             Scene = SceneRef.FromIndex(SceneManager.GetActiveScene().buildIndex),
             SceneManager = _sceneManager,
-            PlayerCount = 2,          // 設定最大玩家數
-            DisableNATPunchthrough = true  // 如果你不需要 NAT 穿透
+            PlayerCount = 4,          // 增加到4，允許2個玩家和2個觀察者
+            DisableNATPunchthrough = true
         };
 
         _runner.ProvideInput = true;
 
         if (_runner.IsSharedModeMasterClient)
         {
-            _runner.Spawn(gameDeckManagerPrefab);
+            //_runner.Spawn(gameDeckManagerPrefab);
+            //_runner.Spawn(observerManagerPrefab);
         }
 
         try
@@ -114,8 +114,6 @@ public class NetworkManager : MonoBehaviour
     private void runner_has_spawned() {
         DeckSelector deckSelector = FindObjectOfType<DeckSelector>();
         deckSelector.Wait_Runner_Spawned();
-
-
     }
 
     private class CallbackHandler : INetworkRunnerCallbacks
@@ -134,6 +132,16 @@ public class NetworkManager : MonoBehaviour
         public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
         {
             Debug.Log($"OnPlayerJoined: {player} Local:{runner.LocalPlayer} Already spawned: {_localPlayerSpawned}");
+
+            if (player.PlayerId > 2)
+            {
+                Debug.Log($"Player {player} joined as observer");
+                if (ObserverManager.Instance != null)
+                {
+                    ObserverManager.Instance.RegisterObserver(player);
+                }
+                return; // 觀察者不需要生成角色
+            }
 
             if (player == runner.LocalPlayer && !_localPlayerSpawned)
             {
