@@ -880,6 +880,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4719690226334910018, guid: d39324f4e6abb534e89ae812f8bbae21, type: 3}
+      propertyPath: Flags
+      value: 786433
+      objectReference: {fileID: 0}
+    - target: {fileID: 4719690226334910018, guid: d39324f4e6abb534e89ae812f8bbae21, type: 3}
       propertyPath: SortKey
       value: 415575126
       objectReference: {fileID: 0}

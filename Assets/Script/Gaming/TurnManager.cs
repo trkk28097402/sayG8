@@ -163,12 +163,9 @@ public class TurnManager : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_AnnounceFirstPlayer(PlayerRef firstPlayer)
     {
-        string playerName = firstPlayer == runner.LocalPlayer ? "你" : "對手";
 
         if (firstPlayerAnnouncement != null)
         {
-            firstPlayerAnnouncement.text = $"遊戲開始！{playerName}先手";
-            firstPlayerAnnouncement.gameObject.SetActive(true);
             StartCoroutine(HideAnnouncementAfterDelay());
         }
 
@@ -301,7 +298,6 @@ public class TurnManager : NetworkBehaviour
     private void UpdateUI()
     {
         UpdateTimerUI();
-        UpdateTurnUI();
     }
 
     private void UpdateTimerUI()
@@ -314,29 +310,6 @@ public class TurnManager : NetworkBehaviour
         else if (timerText != null && !IsTimerRunning)
         {
             timerText.text = "";
-        }
-    }
-
-    private void UpdateTurnUI()
-    {
-        if (turnText != null && IsGameStarted)
-        {
-            bool isLocalPlayerTurn = CurrentTurnPlayer == runner.LocalPlayer;
-
-            if (ObserverManager.Instance == null) Debug.Log("找不到觀察者管理員");
-            if (ObserverManager.Instance.IsPlayerObserver(runner.LocalPlayer)) Debug.Log("我是觀察者");
-
-                if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(runner.LocalPlayer))
-            {
-                string playerNum = CurrentTurnPlayer.PlayerId == 0 ? "玩家1" : "玩家2";
-                turnText.text = $"现在是{playerNum}的回合";
-                turnText.color = normalTextColor;
-                return;
-            }
-
-            string playerName = isLocalPlayerTurn ? "你的" : "對手的";
-            turnText.text = $"現在是{playerName}回合";
-            turnText.color = isLocalPlayerTurn ? turnHighlightColor : normalTextColor;
         }
     }
 

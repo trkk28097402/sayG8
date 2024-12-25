@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System.Collections;
 using DG.Tweening;
 using TMPro;
@@ -24,6 +24,7 @@ public class TurnNotificationManager : NetworkBehaviour
     [SerializeField] private Color yourTurnColor = new Color(0.2f, 0.6f, 1f);
     [SerializeField] private Color opponentTurnColor = new Color(1f, 0.4f, 0.4f);
     [SerializeField] private Color gameStartColor = new Color(0.3f, 0.8f, 0.3f);
+    [SerializeField] private Color normalTextColor = new Color(0f, 0f, 1f);
 
     private RectTransform panelRect;
     private NetworkRunner runner;
@@ -74,22 +75,22 @@ public class TurnNotificationManager : NetworkBehaviour
 
     private void CreateNotificationPanel()
     {
-        // ³Ğ«Ø³qª¾­±ªO
+        // å‰µå»ºé€šçŸ¥é¢æ¿
         GameObject panel = new GameObject("NotificationPanel", typeof(RectTransform));
         notificationPanel = panel;
         panel.transform.SetParent(transform, false);
 
-        // ³]¸mRectTransform
+        // è¨­ç½®RectTransform
         panelRect = panel.GetComponent<RectTransform>();
         panelRect.anchorMin = new Vector2(0.5f, 0.5f);
         panelRect.anchorMax = new Vector2(0.5f, 0.5f);
         panelRect.pivot = new Vector2(0.5f, 0.5f);
         panelRect.sizeDelta = new Vector2(400, 100);
 
-        // ²K¥[CanvasGroup¥Î©ó²H¤J²H¥X
+        // æ·»åŠ CanvasGroupç”¨æ–¼æ·¡å…¥æ·¡å‡º
         panelCanvasGroup = panel.AddComponent<CanvasGroup>();
 
-        // ³Ğ«Ø¤å¥»
+        // å‰µå»ºæ–‡æœ¬
         GameObject textObj = new GameObject("NotificationText", typeof(RectTransform));
         textObj.transform.SetParent(panel.transform, false);
         notificationText = textObj.AddComponent<TextMeshProUGUI>();
@@ -113,7 +114,7 @@ public class TurnNotificationManager : NetworkBehaviour
             return;
         }
 
-        // ½T«O¦³RectTransform
+        // ç¢ºä¿æœ‰RectTransform
         panelRect = notificationPanel.GetComponent<RectTransform>();
         if (!panelRect)
         {
@@ -121,7 +122,7 @@ public class TurnNotificationManager : NetworkBehaviour
             return;
         }
 
-        // ½T«O¦³CanvasGroup
+        // ç¢ºä¿æœ‰CanvasGroup
         panelCanvasGroup = notificationPanel.GetComponent<CanvasGroup>();
         if (!panelCanvasGroup)
         {
@@ -186,9 +187,17 @@ public class TurnNotificationManager : NetworkBehaviour
     {
         if (!isInitialized || !TurnManager.Instance || !runner)
             return;
+        if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(runner.LocalPlayer))
+        {
+            string playerText = TurnManager.Instance.GetCurrentTurnPlayer().PlayerId == 1 ? "ç©å®¶1" : "ç©å®¶2";
+            ShowNotification($"éŠæˆ²é–‹å§‹ï¼{playerText}å…ˆæ‰‹", gameStartColor);
+        }
+        else
+        {
+            string playerText = TurnManager.Instance.GetCurrentTurnPlayer() == runner.LocalPlayer ? "ä½ " : "å°æ‰‹";
+            ShowNotification($"éŠæˆ²é–‹å§‹ï¼{playerText}å…ˆæ‰‹", gameStartColor);
+        }
 
-        string playerText = TurnManager.Instance.GetCurrentTurnPlayer() == runner.LocalPlayer ? "§A" : "¹ï¤â";
-        ShowNotification($"¹CÀ¸¶}©l¡I{playerText}¥ı¤â", gameStartColor);
     }
 
     private void ShowTurnChangeNotification(PlayerRef currentPlayer)
@@ -196,8 +205,18 @@ public class TurnNotificationManager : NetworkBehaviour
         if (!isInitialized || !runner)
             return;
 
+        string message;
+
+        if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(runner.LocalPlayer))
+        {
+            string playerName = currentPlayer.PlayerId == 1 ? "ç©å®¶1" : "ç©å®¶2";
+            message = $"è¼ªåˆ°{playerName}çš„å›åˆ";
+            ShowNotification(message, normalTextColor);
+            return;
+        }
+
         bool isLocalPlayerTurn = currentPlayer == runner.LocalPlayer;
-        string message = isLocalPlayerTurn ? "½ü¨ì§Aªº¦^¦X¡I" : "½ü¨ì¹ï¤âªº¦^¦X";
+        message = isLocalPlayerTurn ? "è¼ªåˆ°ä½ çš„å›åˆï¼" : "è¼ªåˆ°å°æ‰‹çš„å›åˆ";
         Color color = isLocalPlayerTurn ? yourTurnColor : opponentTurnColor;
 
         ShowNotification(message, color);
@@ -211,22 +230,22 @@ public class TurnNotificationManager : NetworkBehaviour
             return;
         }
 
-        // °±¤î·í«e°Êµe
+        // åœæ­¢ç•¶å‰å‹•ç•«
         if (currentAnimation != null && currentAnimation.IsPlaying())
         {
             currentAnimation.Kill();
         }
 
-        // ³]¸m³qª¾¤º®e
+        // è¨­ç½®é€šçŸ¥å…§å®¹
         notificationPanel.SetActive(true);
         notificationText.text = message;
         notificationText.color = textColor;
 
-        // ­«¸m¦ì¸m©M³z©ú«×
+        // é‡ç½®ä½ç½®å’Œé€æ˜åº¦
         panelCanvasGroup.alpha = 0f;
         panelRect.anchoredPosition = new Vector2(0, -slideDistance);
 
-        // ³Ğ«Ø·s°Êµe§Ç¦C
+        // å‰µå»ºæ–°å‹•ç•«åºåˆ—
         currentAnimation = DOTween.Sequence();
 
         currentAnimation
