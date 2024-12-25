@@ -174,6 +174,7 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
     public void PlayCard()
     {
+        audioManagerClassroom.PlaySoundEffectClassroom(audioManagerClassroom.CardUseSound);//yu
         Debug.Log("PlayCard method called");
         var cardOnHand = GetComponentInParent<CardOnHand>();
         if (cardOnHand == null)
