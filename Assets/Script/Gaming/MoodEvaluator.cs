@@ -95,7 +95,20 @@ public class MoodEvaluator : NetworkBehaviour
     [SerializeField] private UnityEngine.UI.Slider moodSlider;
     [SerializeField] private TMPro.TextMeshProUGUI moodValueText;
     [SerializeField] private UnityEngine.UI.Slider opponentMoodSlider; 
-    [SerializeField] private TMPro.TextMeshProUGUI opponentMoodValueText; 
+    [SerializeField] private TMPro.TextMeshProUGUI opponentMoodValueText;
+    [SerializeField] private UnityEngine.UI.Image playerMoodIcon;
+    [SerializeField] private UnityEngine.UI.Image opponentMoodIcon;
+
+    private Dictionary<string, string> moodIconPaths = new Dictionary<string, string>()
+    {
+        { "火爆", "UIresource/emoji/angry" },
+        { "敷衍", "UIresource/emoji/fu_yen" },
+        { "嘲諷", "UIresource/emoji/ridicule" },
+        { "理性", "UIresource/emoji/rational" },
+        { "白目", "UIresource/emoji/bai_mu" },
+        { "歡樂", "UIresource/emoji/happy" }
+    };
+
     [SerializeField] private string anthropicVersion = "2023-06-01";
     [SerializeField] private GameObject responseBG;
 
@@ -149,7 +162,7 @@ public class MoodEvaluator : NetworkBehaviour
 
         if (responseBG != null)
         {
-            analysisText.gameObject.SetActive(isObserver);
+            responseBG.SetActive(isObserver);
         }
 
         if (moodSlider != null)
@@ -242,7 +255,7 @@ public class MoodEvaluator : NetworkBehaviour
     private void Rpc_RequestInitialMood(PlayerRef requestingPlayer)
     {
         if (!Object.HasStateAuthority) return;
-
+        
         if (PlayerMoods.TryGet(requestingPlayer, out var mood))
         {
             Debug.Log($"[MoodEvaluator] Sending initial mood to player {requestingPlayer}: {mood.MoodValue}");
@@ -754,37 +767,42 @@ public class MoodEvaluator : NetworkBehaviour
         bool isObserver = ObserverManager.Instance != null &&
                          ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
 
-        if (isObserver)
+        if (PlayerMoods.TryGet(player, out var currentMood))
         {
-            // 如果是觀察者，把第一個玩家的值顯示在左邊，第二個玩家的值顯示在右邊
-            var players = gameManager.GetConnectedPlayers();
-            if (players.Length >= 2)
+            if (isObserver)
             {
-                if (player == players[0])
+                var players = gameManager.GetConnectedPlayers();
+                if (players.Length >= 2)
                 {
-                    if (moodSlider != null) moodSlider.value = value;
-                    if (moodValueText != null) moodValueText.text = value.ToString("F1");
+                    if (player == players[0])
+                    {
+                        if (moodSlider != null) moodSlider.value = value;
+                        if (moodValueText != null) moodValueText.text = value.ToString("F1");
+                        UpdateMoodIcon(currentMood.AssignedMood, true);
+                    }
+                    else if (player == players[1])
+                    {
+                        if (opponentMoodSlider != null) opponentMoodSlider.value = value;
+                        if (opponentMoodValueText != null) opponentMoodValueText.text = value.ToString("F1");
+                        UpdateMoodIcon(currentMood.AssignedMood, false);
+                    }
                 }
-                else if (player == players[1])
-                {
-                    if (opponentMoodSlider != null) opponentMoodSlider.value = value;
-                    if (opponentMoodValueText != null) opponentMoodValueText.text = value.ToString("F1");
-                }
-            }
-        }
-        else
-        {
-            // 原有的玩家邏輯
-            bool isLocalPlayer = player == Runner.LocalPlayer;
-            if (isLocalPlayer)
-            {
-                if (moodSlider != null) moodSlider.value = value;
-                if (moodValueText != null) moodValueText.text = value.ToString("F1");
             }
             else
             {
-                if (opponentMoodSlider != null) opponentMoodSlider.value = value;
-                if (opponentMoodValueText != null) opponentMoodValueText.text = value.ToString("F1");
+                bool isLocalPlayer = player == Runner.LocalPlayer;
+                if (isLocalPlayer)
+                {
+                    if (moodSlider != null) moodSlider.value = value;
+                    if (moodValueText != null) moodValueText.text = value.ToString("F1");
+                    UpdateMoodIcon(currentMood.AssignedMood, true);
+                }
+                else
+                {
+                    if (opponentMoodSlider != null) opponentMoodSlider.value = value;
+                    if (opponentMoodValueText != null) opponentMoodValueText.text = value.ToString("F1");
+                    UpdateMoodIcon(currentMood.AssignedMood, false);
+                }
             }
         }
     }
@@ -821,16 +839,46 @@ public class MoodEvaluator : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_UpdateAnalysisText(string analysis)
     {
+        bool isObserver = ObserverManager.Instance != null &&
+                 ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
+
         if (analysisText != null)
         {
-            // 只有觀察者可以看到分析文字
-            bool isObserver = ObserverManager.Instance != null &&
-                             ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
-
             analysisText.gameObject.SetActive(isObserver);
             if (isObserver)
             {
                 analysisText.text = analysis;
+            }
+        }
+
+        if (responseBG != null)
+        {
+            responseBG.SetActive(isObserver);
+        }
+    }
+
+    private void UpdateMoodIcon(NetworkString<_32> mood, bool isPlayerIcon)
+    {
+        if (moodIconPaths.TryGetValue(mood.Value, out string resourcePath))
+        {
+            Debug.Log("updating icon");
+
+            Sprite iconSprite = Resources.Load<Sprite>(resourcePath);
+
+            if (iconSprite != null)
+            {
+                if (isPlayerIcon && playerMoodIcon != null)
+                {
+                    playerMoodIcon.sprite = iconSprite;
+                }
+                else if (!isPlayerIcon && opponentMoodIcon != null)
+                {
+                    opponentMoodIcon.sprite = iconSprite;
+                }
+            }
+            else
+            {
+                Debug.LogError($"Failed to load mood icon at path: {resourcePath}");
             }
         }
     }
