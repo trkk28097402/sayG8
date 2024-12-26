@@ -22,6 +22,13 @@ public class CardOnHand : NetworkBehaviour
     private Dictionary<RectTransform, NetworkedCardData> cardDataMap = new Dictionary<RectTransform, NetworkedCardData>();
     private CardInteraction currentSelectedCard;
 
+    public bool IsInitialized { get; private set; }
+
+    protected void CompleteInitialization()
+    {
+        IsInitialized = true;
+    }
+
     public override void Spawned()
     {
         base.Spawned();
@@ -66,6 +73,8 @@ public class CardOnHand : NetworkBehaviour
         playerStatus.OnCardDrawn += HandleNewCard;
         playerStatus.OnCardRemoved += HandleCardRemoved;
         playerStatus.OnDeckShuffled += HandleDeckShuffled;
+
+        CompleteInitialization();
     }
 
     private void OnDestroy()

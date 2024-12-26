@@ -66,6 +66,17 @@ public class GameManager : NetworkBehaviour
     public void RegisterPlayerCard(PlayerRef player, CardOnHand cardHand)
     {
         Debug.Log($"Attempting to register player {player}");
+        StartCoroutine(WaitForCardInitialization(player, cardHand));
+    }
+
+    private IEnumerator WaitForCardInitialization(PlayerRef player, CardOnHand cardHand)
+    {
+        // 等待 CardOnHand 完成初始化
+        while (!cardHand.IsInitialized)
+        {
+            yield return new WaitForSeconds(0.1f);
+        }
+
         if (!localPlayerCards.ContainsKey(player))
         {
             localPlayerCards[player] = cardHand;
@@ -73,15 +84,26 @@ public class GameManager : NetworkBehaviour
             {
                 NetworkedPlayerCards.Add(player, cardHand.Object.Id);
             }
-            Debug.Log($"Successfully registered player {player}");
-        }
+            Debug.Log($"Successfully registered player {player} after initialization");
 
-        // 同步到其他客戶端
-        Rpc_SyncPlayerCard(player, cardHand.Object.Id);
+            // 向 StateAuthority 發送同步請求
+            Rpc_RequestSyncPlayerCard(player, cardHand.Object.Id);
+        }
     }
 
-    [Rpc(RpcSources.All, RpcTargets.All)]
-    private void Rpc_SyncPlayerCard(PlayerRef player, NetworkId cardId)
+    // 玩家向 StateAuthority 發送同步請求
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void Rpc_RequestSyncPlayerCard(PlayerRef player, NetworkId cardId)
+    {
+        if (!Object.HasStateAuthority) return;
+
+        // StateAuthority 驗證後廣播給所有客戶端
+        Rpc_BroadcastPlayerCard(player, cardId);
+    }
+
+    // StateAuthority 向所有客戶端廣播
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_BroadcastPlayerCard(PlayerRef player, NetworkId cardId)
     {
         var cardHand = Runner.FindObject(cardId).GetComponent<CardOnHand>();
         if (cardHand != null)
