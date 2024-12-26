@@ -140,89 +140,15 @@ public class MoodEvaluator : NetworkBehaviour
         turnManager = FindObjectOfType<TurnManager>();
         Debug.Log($"[MoodEvaluator] Spawned called, IsStateAuthority: {Object.HasStateAuthority}");
 
-        bool isObserver = ObserverManager.Instance != null &&
-                 ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
-
+        // 如果是StateAuthority，開始初始化流程
         if (Object.HasStateAuthority)
         {
             StartCoroutine(InitializeMoodsWithRetry());
         }
-
-        // 所有玩家都請求初始氣氛值
-        if (Runner.LocalPlayer != null)
+        // 所有客戶端都請求初始化
+        else if (Runner.LocalPlayer != null)
         {
-            Rpc_RequestInitialMood(Runner.LocalPlayer);
-        }
-
-        if (analysisText != null)
-        {
-            analysisText.gameObject.SetActive(isObserver);
-            analysisText.text = string.Empty;
-        }
-
-        if (responseBG != null)
-        {
-            responseBG.SetActive(isObserver);
-        }
-
-        if (moodSlider != null)
-        {
-            moodSlider.value = 0f;
-        }
-        if (moodValueText != null)
-        {
-            moodValueText.text = "50.0";
-        }
-
-        if (opponentMoodSlider != null)
-        {
-            opponentMoodSlider.value = 0f;
-        }
-        if (opponentMoodValueText != null)
-        {
-            opponentMoodValueText.text = "0.0";
-        }
-
-        if (winnerText != null)
-        {
-            winnerText.gameObject.SetActive(false); 
-        }
-
-        if (isObserver)
-        {
-            // 為觀察者設置初始狀態
-            var players = gameManager.GetConnectedPlayers();
-            foreach (var player in players)
-            {
-                if (PlayerMoods.TryGet(player, out var mood))
-                {
-                    UpdateMoodUI(mood.MoodValue, player);
-                }
-            }
-        }
-
-        if (Runner.LocalPlayer != null && PlayerMoods.TryGet(Runner.LocalPlayer, out var localMood))
-        {
-            UpdateMoodIcon(localMood.AssignedMood, true);
-
-            // 尋找對手並更新其icon
-            var players = gameManager.GetConnectedPlayers();
-            foreach (var player in players)
-            {
-                if (player != Runner.LocalPlayer && PlayerMoods.TryGet(player, out var opponentMood))
-                {
-                    UpdateMoodIcon(opponentMood.AssignedMood, false);
-                    break;
-                }
-            }
-        }
-
-        UpdatePlayerLabels(isObserver);
-
-        // 請求初始氣氛值
-        if (Runner.LocalPlayer != null)
-        {
-            Rpc_RequestInitialMood(Runner.LocalPlayer);
+            Rpc_RequestInitialization(Runner.LocalPlayer);
         }
     }
 
@@ -233,6 +159,80 @@ public class MoodEvaluator : NetworkBehaviour
             yield return new WaitForSeconds(1f);
         }
         InitializeMoods();
+
+        // 初始化完成後，通知所有客戶端
+        foreach (var player in gameManager.GetConnectedPlayers())
+        {
+            if (PlayerMoods.TryGet(player, out var mood))
+            {
+                Rpc_InitializeClient(player, mood.AssignedMood, mood.MoodValue);
+            }
+        }
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void Rpc_RequestInitialization(PlayerRef requestingPlayer)
+    {
+        if (!Object.HasStateAuthority) return;
+
+        if (PlayerMoods.TryGet(requestingPlayer, out var mood))
+        {
+            Rpc_InitializeClient(requestingPlayer, mood.AssignedMood, mood.MoodValue);
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_InitializeClient(PlayerRef targetPlayer, NetworkString<_32> assignedMood, float moodValue)
+    {
+        bool isObserver = ObserverManager.Instance != null &&
+                         ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
+
+        // 設置默認UI值
+        if (moodSlider != null)
+        {
+            moodSlider.value = 50f;
+        }
+        if (moodValueText != null)
+        {
+            moodValueText.text = "50.0";
+        }
+        if (opponentMoodSlider != null)
+        {
+            opponentMoodSlider.value = 50f;
+        }
+        if (opponentMoodValueText != null)
+        {
+            opponentMoodValueText.text = "50.0";
+        }
+        if (winnerText != null)
+        {
+            winnerText.gameObject.SetActive(false);
+        }
+        if (analysisText != null)
+        {
+            analysisText.gameObject.SetActive(isObserver);
+            analysisText.text = string.Empty;
+        }
+        if (responseBG != null)
+        {
+            responseBG.SetActive(isObserver);
+        }
+
+        // 更新網絡狀態
+        if (PlayerMoods.TryGet(targetPlayer, out var currentMood))
+        {
+            var newMood = new MoodState
+            {
+                AssignedMood = assignedMood,
+                MoodValue = moodValue
+            };
+            PlayerMoods.Set(targetPlayer, newMood);
+        }
+
+        // 更新UI和圖標
+        UpdateMoodUI(moodValue, targetPlayer);
+        UpdateMoodIcon(assignedMood, targetPlayer == Runner.LocalPlayer);
+        UpdatePlayerLabels(isObserver);
     }
 
     private string[] availableMoods = { "火爆", "敷衍", "嘲諷", "理性", "白目", "歡樂" };
