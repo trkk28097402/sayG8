@@ -21,6 +21,8 @@ public class CardOnHand : NetworkBehaviour
     private List<RectTransform> cardsInHand = new List<RectTransform>();
     private Dictionary<RectTransform, NetworkedCardData> cardDataMap = new Dictionary<RectTransform, NetworkedCardData>();
     private CardInteraction currentSelectedCard;
+    private CardInteraction currentHoveredCard;
+    private int currentHoveredIndex = -1; // Track the index of the currently hovered card
 
     public bool IsInitialized { get; private set; }
 
@@ -77,6 +79,95 @@ public class CardOnHand : NetworkBehaviour
         CompleteInitialization();
     }
 
+    private void Update()
+    {
+        // Only handle keyboard input if the hand is initialized and we're not an observer
+        if (!IsInitialized || ObserverManager.Instance?.IsPlayerObserver(Runner.LocalPlayer) == true)
+            return;
+
+        HandleKeyboardInput();
+    }
+
+    // New method to handle keyboard navigation
+    private void HandleKeyboardInput()
+    {
+        // If there are no cards, don't process keyboard input
+        if (cardsInHand.Count == 0)
+            return;
+
+        bool moveLeft = Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow);
+        bool moveRight = Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow);
+        bool confirmKey = Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+
+        // If a card is selected
+        if (currentSelectedCard != null)
+        {
+            if (confirmKey)
+            {
+                // Only play the card on second Enter press
+                currentSelectedCard.PlayCard();
+                return;
+            }
+            else if (moveLeft || moveRight)
+            {
+                // Deselect current card
+                currentSelectedCard.ResetCard();
+                // Move hover to appropriate card
+                int newIndex = moveLeft
+                    ? (currentHoveredIndex - 1 + cardsInHand.Count) % cardsInHand.Count
+                    : (currentHoveredIndex + 1) % cardsInHand.Count;
+                SetHoverCardByIndex(newIndex);
+            }
+        }
+        else
+        {
+            // No card is selected
+            if (moveLeft)
+            {
+                // Move hover left
+                int newIndex = (currentHoveredIndex <= 0)
+                    ? cardsInHand.Count - 1
+                    : currentHoveredIndex - 1;
+                SetHoverCardByIndex(newIndex);
+            }
+            else if (moveRight)
+            {
+                // Move hover right
+                int newIndex = (currentHoveredIndex == cardsInHand.Count - 1 || currentHoveredIndex == -1)
+                    ? 0
+                    : currentHoveredIndex + 1;
+                SetHoverCardByIndex(newIndex);
+            }
+            else if (confirmKey && currentHoveredCard != null)
+            {
+                // Select the currently hovered card on first Enter press
+                currentHoveredCard.ToggleSelected();
+            }
+        }
+    }
+
+    // Helper method to set hover state on a card by index
+    private void SetHoverCardByIndex(int index)
+    {
+        if (index < 0 || index >= cardsInHand.Count)
+            return;
+
+        // Reset current hover state if exists
+        if (currentHoveredCard != null)
+        {
+            currentHoveredCard.SetHoverState(false);
+        }
+
+        // Set new hovered card
+        CardInteraction cardInteraction = cardsInHand[index].GetComponent<CardInteraction>();
+        if (cardInteraction != null && !cardInteraction.isSelected)
+        {
+            cardInteraction.SetHoverState(true);
+            currentHoveredCard = cardInteraction;
+            currentHoveredIndex = index;
+        }
+    }
+
     private void OnDestroy()
     {
         if (playerStatus != null)
@@ -108,6 +199,9 @@ public class CardOnHand : NetworkBehaviour
         Vector2 startPos = deckPosition.anchoredPosition;
         CreateAndAnimateCard(cardData, startPos, cardsInHand.Count);
         RearrangeCards();
+
+        // 當新卡加入後，等待動畫完成後選擇中間牌為hover狀態
+        StartCoroutine(SelectMiddleCardHoverAfterDelay(drawDuration + 0.1f));
     }
 
     public void HandleCardPlayed(int cardIndex)
@@ -126,6 +220,25 @@ public class CardOnHand : NetworkBehaviour
     {
         if (index >= 0 && index < cardsInHand.Count)
         {
+            // Update current hovered index if needed
+            if (index == currentHoveredIndex)
+            {
+                currentHoveredIndex = -1;
+                currentHoveredCard = null;
+            }
+            else if (index < currentHoveredIndex)
+            {
+                currentHoveredIndex--;
+            }
+
+            // 清除當前hover狀態的卡牌引用
+            CardInteraction cardInteraction = cardsInHand[index].GetComponent<CardInteraction>();
+            if (cardInteraction == currentHoveredCard)
+            {
+                currentHoveredCard = null;
+                currentHoveredIndex = -1;
+            }
+
             var cardRect = cardsInHand[index];
             if (cardDataMap.ContainsKey(cardRect))
             {
@@ -139,6 +252,9 @@ public class CardOnHand : NetworkBehaviour
 
             cardsInHand.RemoveAt(index);
             RearrangeCards();
+
+            // 重新設置中間牌為hover狀態
+            StartCoroutine(SelectMiddleCardHoverAfterDelay(0.3f));
         }
     }
 
@@ -172,6 +288,44 @@ public class CardOnHand : NetworkBehaviour
             yield return new WaitForSeconds(drawDelay);
             CreateAndAnimateCard(cards[i], startPos, i);
         }
+
+        // 初始牌抽完後，等待所有動畫完成，然後選擇中間牌為hover狀態
+        yield return new WaitForSeconds(drawDuration + 0.1f);
+        SelectMiddleCardHover();
+    }
+
+    // 選擇中間牌為hover狀態
+    public void SelectMiddleCardHover()
+    {
+        if (cardsInHand.Count == 0) return;
+
+        // 先重置所有卡牌的hover狀態
+        if (currentHoveredCard != null)
+        {
+            // 呼叫OnPointerExit重置當前hover狀態
+            currentHoveredCard.SetHoverState(false);
+            currentHoveredCard = null;
+        }
+
+        // 選擇中間的卡牌
+        int middleIndex = cardsInHand.Count / 2;
+        if (middleIndex < cardsInHand.Count)
+        {
+            currentHoveredIndex = middleIndex;
+            CardInteraction cardInteraction = cardsInHand[middleIndex].GetComponent<CardInteraction>();
+            if (cardInteraction != null && !cardInteraction.isSelected)
+            {
+                cardInteraction.SetHoverState(true);
+                currentHoveredCard = cardInteraction;
+            }
+        }
+    }
+
+    // 延遲選擇中間牌為hover狀態
+    private IEnumerator SelectMiddleCardHoverAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        SelectMiddleCardHover();
     }
 
     private void CreateAndAnimateCard(NetworkedCardData cardData, Vector2 startPos, int index)
@@ -242,8 +396,8 @@ public class CardOnHand : NetworkBehaviour
         RectTransform canvasRect = canvas.GetComponent<RectTransform>();
         float canvasWidth = canvasRect.rect.width;
 
-        float usableWidth = canvasWidth * 0.9f; 
-        float cardSpacing = usableWidth / (MaxCards - 1); 
+        float usableWidth = canvasWidth * 0.9f;
+        float cardSpacing = usableWidth / (MaxCards - 1);
 
         float startX = -usableWidth / 2;
 
@@ -253,8 +407,8 @@ public class CardOnHand : NetworkBehaviour
             if (cardRect != null)
             {
                 float xPos = cardsInHand.Count == 1 ?
-                    0 : 
-                    startX + (i * cardSpacing); 
+                    0 :
+                    startX + (i * cardSpacing);
 
                 Vector2 targetPosition = new Vector2(xPos, defaultYPosition);
 
@@ -276,6 +430,13 @@ public class CardOnHand : NetworkBehaviour
 
     public void OnCardSelected(CardInteraction card)
     {
+        // 如果選擇了一張牌，則取消其他牌的hover狀態
+        if (currentHoveredCard != null && currentHoveredCard != card)
+        {
+            currentHoveredCard.SetHoverState(false);
+            currentHoveredCard = null;
+        }
+
         if (currentSelectedCard != null && currentSelectedCard != card)
         {
             currentSelectedCard.ForceReset();
@@ -299,6 +460,9 @@ public class CardOnHand : NetworkBehaviour
                 currentSelectedCard = null;
             }
             UpdateCardPositions();
+
+            // 當牌返回手牌區後，等待動畫完成再選擇中間牌為hover狀態
+            StartCoroutine(SelectMiddleCardHoverAfterDelay(0.3f));
         }
     }
 

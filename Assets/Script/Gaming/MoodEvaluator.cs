@@ -94,10 +94,11 @@ public class MoodEvaluator : NetworkBehaviour
     [SerializeField] private string apiKey;
     [SerializeField] private UnityEngine.UI.Slider moodSlider;
     [SerializeField] private TMPro.TextMeshProUGUI moodValueText;
-    [SerializeField] private UnityEngine.UI.Slider opponentMoodSlider; 
+    [SerializeField] private UnityEngine.UI.Slider opponentMoodSlider;
     [SerializeField] private TMPro.TextMeshProUGUI opponentMoodValueText;
     [SerializeField] private UnityEngine.UI.Image playerMoodIcon;
     [SerializeField] private UnityEngine.UI.Image opponentMoodIcon;
+    [SerializeField] private TurnNotificationManager turnNotificationManager;
 
     private Dictionary<string, string> moodIconPaths = new Dictionary<string, string>()
     {
@@ -135,10 +136,18 @@ public class MoodEvaluator : NetworkBehaviour
     public override void Spawned()
     {
         base.Spawned();
+
+        // Find TurnNotificationManager if not already assigned
+        if (turnNotificationManager == null)
+        {
+            turnNotificationManager = FindObjectOfType<TurnNotificationManager>();
+        }
+
         gameManager = GameManager.Instance;
         playedCardsManager = FindObjectOfType<PlayedCardsManager>();
         turnManager = FindObjectOfType<TurnManager>();
         Debug.Log($"[MoodEvaluator] Spawned called, IsStateAuthority: {Object.HasStateAuthority}");
+
 
         // 如果是StateAuthority，開始初始化流程
         if (Object.HasStateAuthority)
@@ -329,7 +338,6 @@ public class MoodEvaluator : NetworkBehaviour
                 turnManager.PauseTurnTimer();
             }
 
-            // Rest of the existing OnCardPlayed logic...
             if (deckId < 0)
             {
                 Debug.LogError($"Invalid deck ID {deckId} for player {player}. Ensure deck is properly assigned.");
@@ -398,12 +406,42 @@ public class MoodEvaluator : NetworkBehaviour
     {
         try
         {
+            // Show AI analysis notification
+            if (turnNotificationManager != null)
+            {
+                Rpc_ShowAIAnalysisNotification();
+            }
+
             string response = await GetMoodEvaluation(player);
             ProcessMoodResponse(response);
         }
         catch (Exception e)
         {
             Debug.LogError($"Error evaluating mood: {e.Message}");
+
+            // Hide notification in case of error
+            if (turnNotificationManager != null)
+            {
+                Rpc_HideAIAnalysisNotification();
+            }
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_ShowAIAnalysisNotification()
+    {
+        if (turnNotificationManager != null)
+        {
+            turnNotificationManager.ShowAIAnalysisNotification();
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_HideAIAnalysisNotification()
+    {
+        if (turnNotificationManager != null)
+        {
+            turnNotificationManager.HideNotification();
         }
     }
 
@@ -659,6 +697,11 @@ public class MoodEvaluator : NetworkBehaviour
 
             CheckWinCondition();
 
+            if (turnNotificationManager != null)
+            {
+                Rpc_HideAIAnalysisNotification();
+            }
+
             if (Object.HasStateAuthority)
             {
                 if (turnManager != null)
@@ -676,6 +719,11 @@ public class MoodEvaluator : NetworkBehaviour
 
         {
             Debug.LogError($"Error processing mood response: {e.Message}\nResponse: {response}");
+
+            if (turnNotificationManager != null)
+            {
+                Rpc_HideAIAnalysisNotification();
+            }
 
             try
             {

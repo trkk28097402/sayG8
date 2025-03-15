@@ -260,6 +260,66 @@ public class TurnNotificationManager : NetworkBehaviour
             });
     }
 
+    public void ShowAIAnalysisNotification()
+    {
+        if (!isInitialized || !notificationPanel || !notificationText || !panelRect || !panelCanvasGroup)
+        {
+            Debug.LogError("TurnNotificationManager: Cannot show AI analysis notification - components not initialized");
+            return;
+        }
+
+        // Stop current animation if playing
+        if (currentAnimation != null && currentAnimation.IsPlaying())
+        {
+            currentAnimation.Kill();
+        }
+
+        // Set notification content
+        notificationPanel.SetActive(true);
+        notificationText.text = "AI正在進行分析...";
+        notificationText.color = Color.white; // Use white or another appropriate color
+
+        // Reset position and transparency
+        panelCanvasGroup.alpha = 0f;
+        panelRect.anchoredPosition = new Vector2(0, -slideDistance);
+
+        // Create new animation sequence - keep it visible until explicitly hidden
+        currentAnimation = DOTween.Sequence();
+
+        currentAnimation
+            .Append(panelRect.DOAnchorPosY(0, fadeDuration).SetEase(Ease.OutBack))
+            .Join(panelCanvasGroup.DOFade(1, fadeDuration));
+
+        // Note: This animation doesn't include the auto-hide feature
+        // It will remain visible until HideNotification is called
+    }
+
+    // Add this method to hide the notification
+    public void HideNotification()
+    {
+        if (!isInitialized || !notificationPanel || !notificationText || !panelRect || !panelCanvasGroup)
+        {
+            return;
+        }
+
+        // Stop current animation if playing
+        if (currentAnimation != null && currentAnimation.IsPlaying())
+        {
+            currentAnimation.Kill();
+        }
+
+        // Create hide animation
+        currentAnimation = DOTween.Sequence();
+
+        currentAnimation
+            .Append(panelRect.DOAnchorPosY(slideDistance, fadeDuration).SetEase(Ease.InBack))
+            .Join(panelCanvasGroup.DOFade(0, fadeDuration))
+            .OnComplete(() => {
+                notificationPanel.SetActive(false);
+                currentAnimation = null;
+            });
+    }
+
     private void OnDestroy()
     {
         if (currentAnimation != null)

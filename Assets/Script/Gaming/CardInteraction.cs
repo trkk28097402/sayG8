@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using DG.Tweening;
@@ -13,9 +13,9 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
     private Vector2 originalPosition;
     private Vector3 originalRotation;
     private Vector3 originalScale;
-    private Vector2 basePosition;    // ·s¼W¡G°O¿ı°ò¥»¦ì¸m
-    private Vector3 baseRotation;    // ·s¼W¡G°O¿ı°ò¥»±ÛÂà
-    private Vector3 baseScale;       // ·s¼W¡G°O¿ı°ò¥»ÁY©ñ
+    private Vector2 basePosition;    // Â·sÑ˜WĞGÂ«OÂ¦sÂ°Ñ‚ÒÂ»Â¦Ğ¼Ñ‘m
+    private Vector3 baseRotation;    // Â·sÑ˜WĞGÂ«OÂ¦sÂ°Ñ‚ÒÂ»Â±Ğ«Ğ’Ğ°
+    private Vector3 baseScale;       // Â·sÑ˜WĞGÂ«OÂ¦sÂ°Ñ‚ÒÂ»Ğ‘YÂ©Ñ
     private bool isHovered = false;
     public bool isSelected = false;
 
@@ -27,15 +27,12 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
     private void Update()
     {
-        // ¦pªG¥dµP³Q¿ï¤¤¥B«ö¤U Enter
-        if (isSelected && Input.GetKeyDown(KeyCode.Return))
-        {
-            Debug.Log("Enter pressed on selected card");
-            PlayCard();
-        }
+        // This individual card Enter key handler is removed
+        // All keyboard handling is now done in CardOnHand to ensure
+        // proper two-step process (first Enter selects, second Enter plays)
     }
 
-    // ³]©w§Ú¬O­ş±i¥d
+    // Ñ–]Ñ‘mÂ¬OÂ§_Â¬Â°â„–ĞºĞ•Ğ¹Òd
     public void SetCardData(NetworkedCardData data)
     {
         cardData = data;
@@ -54,11 +51,40 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
         }
     }
 
+    // Â·sÑ˜W: Ñ–]Ñ‘mÒdÂµPĞ„Ñ”hoverĞ„Â¬Ñ”A
+    public void SetHoverState(bool state)
+    {
+        if (isSelected) return;
+
+        // Always update the isHovered flag correctly
+        isHovered = state;
+
+        // Stop any running animations
+        rectTransform.DOKill();
+
+        if (state)
+        {
+            Debug.Log($"Card {cardData.cardName.Value} set to hover state");
+            // Apply hover state animations
+            rectTransform.DOScale(Vector3.one * hoverScale, hoverDuration);
+            rectTransform.DOAnchorPos(basePosition + new Vector2(0, hoverHeight), hoverDuration);
+            rectTransform.DORotate(Vector3.zero, hoverDuration);
+        }
+        else
+        {
+            Debug.Log($"Card {cardData.cardName.Value} reset from hover state");
+            // Make sure to reset to original positions
+            rectTransform.DOScale(baseScale, hoverDuration);
+            rectTransform.DOAnchorPos(basePosition, hoverDuration);
+            rectTransform.DORotate(baseRotation, hoverDuration);
+        }
+    }
+
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (isSelected) return;
 
-        Debug.Log($"Card {cardData.cardName.Value} entered"); 
+        Debug.Log($"Card {cardData.cardName.Value} entered");
         isHovered = true;
 
         rectTransform.DOKill();
@@ -83,29 +109,30 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
         ToggleSelected();
     }
 
-    private void ToggleSelected()
+    // Make this method public so it can be called from CardOnHand
+    public void ToggleSelected()
     {
-        audioManagerClassroom.PlaySoundEffectClassroom (audioManagerClassroom.CardTouchSound);//yu
+        audioManagerClassroom.PlaySoundEffectClassroom(audioManagerClassroom.CardTouchSound);//yu
         isSelected = !isSelected;
         if (isSelected)
         {
-            // Àò¨úµe¥¬­pºâ¤¤¤ß¦ì¸m
+            // Ğ†Ñ•Â¦Ğ¬ÂµeÂ­Â±Â­pÑ”Ğ²Â¤Â¤ÒĞÂ¦Ğ¼Ñ‘m
             Canvas canvas = GetComponentInParent<Canvas>();
             if (canvas != null)
             {
-                rectTransform.DOKill(); // °±¤î©Ò¦³¶i¦æ¤¤ªº°Êµe
+                rectTransform.DOKill(); // Â°Â±Â¤Ğ¾Â©Ğ¢Â¦Ñ–Â¶iÂ¦Ğ¶Â¤Â¤Ğ„Ñ”Â°ĞšÂµe
 
-                // «O¦s­ì©l¸ê°T
+                // Â«OÂ¦sÂ­Ğ¼Â©lÑ‘ĞºÂ°T
                 originalParent = transform.parent;
                 originalPosition = rectTransform.anchoredPosition;
                 originalRotation = rectTransform.eulerAngles;
-                originalScale = rectTransform.localScale; // ­«·s«O¦s·í«e¤ñ¨Ò¡AÁ×§K­«½Æ©ñ¤j
+                originalScale = rectTransform.localScale; // Â­Â«Â·sÂ«OÂ¦sÂ·Ğ½Â«eÂ¤Ğ¨Â¤oĞAĞ‘Ğ§Â§KÂ­Â«Ğ•|Â©ÑÂ¤j
 
                 Sequence selectSequence = DOTween.Sequence();
 
-                // ²¾°Ê¨ìµe­±¤¤¤ß¡A©ñ¤j¡A¨Ã¦^¥¿
+                // Â°Ñ…Â¦Ğ¶Â°ĞšÂµeÂ¦Ğ¬Â¤Â¤ÒĞĞAÂ©ÑÂ¤jĞAĞĞ“Â¦^ÒÑ—
                 selectSequence.Append(rectTransform.DOAnchorPos(new Vector2(0, 200), 0.3f).SetEase(Ease.OutCubic));
-                selectSequence.Join(rectTransform.DOScale(Vector3.one * 1.5f, 0.3f).SetEase(Ease.OutCubic)); // ¨Ï¥Î©T©wªº©ñ¤j­¿¼Æ
+                selectSequence.Join(rectTransform.DOScale(Vector3.one * 1.5f, 0.3f).SetEase(Ease.OutCubic)); // ĞĞŸÒĞÂ©TÂ©wĞ„Ñ”Â©ÑÂ¤jÑ˜Ğ–Â­Ğ˜
                 selectSequence.Join(rectTransform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.OutCubic));
 
                 var cardOnHand = originalParent.GetComponent<CardOnHand>();
@@ -114,7 +141,7 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
                     cardOnHand.OnCardSelected(this);
                 }
 
-                // ½T«O¥d¤ù¦b³Ì¤W¼h
+                // Ğ…TÂ«OÒdÂµPÂ¦bÑ–ĞœÂ¤WÑ˜h
                 transform.SetAsLastSibling();
             }
         }
@@ -128,12 +155,12 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
     {
         if (rectTransform != null)
         {
-            // «O¦s°ò¥»ª¬ºA¡]¤£·|³Qhover¼vÅTªºª¬ºA¡^
+            // Â«OÂ¦sÂ°Ñ‚ÒÂ»Ğ„Â¬Ñ”AĞ]Â¤ĞˆÂ·|Ñ–QhoverÑ˜vĞ•TĞ„Ñ”Ğ„Â¬Ñ”AĞ^
             basePosition = rectTransform.anchoredPosition;
             baseRotation = rectTransform.eulerAngles;
             baseScale = rectTransform.localScale;
 
-            // ·í«eª¬ºAµ¥©ó°ò¥»ª¬ºA
+            // Â·Ğ½Â«eĞ„Â¬Ñ”AÂµÒÂ©ÑƒÂ°Ñ‚ÒÂ»Ğ„Â¬Ñ”A
             originalPosition = basePosition;
             originalRotation = baseRotation;
             originalScale = baseScale;
@@ -153,7 +180,7 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
             rectTransform.DOKill();
             Sequence resetSequence = DOTween.Sequence();
-            // ¨Ï¥Î°ò¥»ª¬ºA¦Ó¤£¬O¥i¯à³Qhover¼vÅTªºoriginalPosition
+            // ĞĞŸÒĞÂ°Ñ‚ÒÂ»Ğ„Â¬Ñ”AÂ¦Ğ£Â¤ĞˆÂ¬OÒiĞ‡Ğ°Ñ–QhoverÑ˜vĞ•TĞ„Ñ”originalPosition
             resetSequence.Append(rectTransform.DOScale(baseScale, hoverDuration).SetEase(Ease.OutCubic));
             resetSequence.Join(rectTransform.DOAnchorPos(basePosition, hoverDuration).SetEase(Ease.OutCubic));
             resetSequence.Join(rectTransform.DORotate(baseRotation, hoverDuration).SetEase(Ease.OutCubic));
@@ -166,7 +193,7 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
         isSelected = false;
         rectTransform.DOKill();
 
-        // ª½±µ¨Ï¥Î°ò¥»ª¬ºA
+        // Ğ„Ğ…Â±ÂµĞĞŸÒĞÂ°Ñ‚ÒÂ»Ğ„Â¬Ñ”A
         rectTransform.anchoredPosition = basePosition;
         rectTransform.eulerAngles = baseRotation;
         rectTransform.localScale = baseScale;
@@ -195,7 +222,7 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
             Debug.Log("Found PlayedCardsManager, calling PlayCard");
             playedCardsManager.PlayCard(cardData, cardIndex);
 
-            // ³qª¾ CardOnHand ³B²z©âµPÅŞ¿è
+            // Ñ–qĞ„Ñ• CardOnHand Ñ–BĞ†zÒdÂµPĞ†Ñ•Â°Ğˆ
             cardOnHand.HandleCardPlayed(cardIndex);
         }
         else
