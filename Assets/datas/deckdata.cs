@@ -33,6 +33,15 @@ public class GameDeckDatabase
             description = "童年回憶卡通海綿寶寶為主題，擁有各種嗆聲名言，是對於提升火爆值非常有幫助的牌組",
             deck_path = "Decks/SpongeBob"
         },
+        new GameDeckData
+        {
+            deckName = "八點檔",
+            cardCount = 40,
+            id = 1,
+            preview_imgae_path = "UI/Deck_preview_Image/8oclock",
+            description = "台灣白爛的八點檔梗圖",
+            deck_path = "Decks/8oclock"
+        },
     };
 
     public GameDeckData GetDeckById(int id)
