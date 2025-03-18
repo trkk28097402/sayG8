@@ -1,4 +1,4 @@
-using UnityEngine;
+嚜簑sing UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
@@ -10,33 +10,57 @@ public class DeckSelector : NetworkBehaviour
     [Header("UI Elements")]
     [SerializeField] private Button previousButton;
     [SerializeField] private Button nextButton;
-    [SerializeField] private Button deckDescriptOpenButton; //yu
-    [SerializeField] private Button deckDescriptCloseButton; //yu
-    [SerializeField] private GameObject deckDescriptPop; //yu
-    [SerializeField] private GameObject panelPop; //yu
+    [SerializeField] private Button deckDescriptOpenButton; 
+    [SerializeField] private Button deckDescriptCloseButton; 
+    [SerializeField] private GameObject deckDescriptPop; 
+    [SerializeField] private GameObject panelPop; 
     [SerializeField] private TextMeshProUGUI deckNameText;
     [SerializeField] private TextMeshProUGUI deckDescriptionText;
     [SerializeField] private Image deckPreviewImage;
-    AudioManagerLobby audioManagerLobby;//yu
+    AudioManagerLobby audioManagerLobby;
+
+    [Header("Input Settings")]
+    [SerializeField] private float keyInputCooldown = 0.3f; // Cooldown between key presses to prevent rapid changes
+    private float lastKeyInputTime = 0f;
 
     private int currentDeckIndex = 0;
     private List<GameDeckData> availableDecks = new List<GameDeckData>();
     private Dictionary<string, Sprite> previewSprites = new Dictionary<string, Sprite>();
     private NetworkRunner runner;
-    
-    //yu
+
     private void Awake()
     {
         audioManagerLobby = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManagerLobby>();
     }
-    //
 
     private void Start()
     {
-        
+
     }
 
-    public void Wait_Runner_Spawned() {
+    // Add Update method to handle keyboard input
+    private void Update()
+    {
+        // Check if enough time has passed since last key input
+        if (Time.time - lastKeyInputTime < keyInputCooldown)
+            return;
+
+        // Check for left arrow or A key
+        if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
+        {
+            ChangeDeck(-1);
+            lastKeyInputTime = Time.time;
+        }
+        // Check for right arrow or D key
+        else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
+        {
+            ChangeDeck(1);
+            lastKeyInputTime = Time.time;
+        }
+    }
+
+    public void Wait_Runner_Spawned()
+    {
         runner = FindObjectOfType<NetworkRunner>();
         if (runner == null)
         {
@@ -51,7 +75,7 @@ public class DeckSelector : NetworkBehaviour
 
     private void OnEnable()
     {
-        
+
         if (availableDecks.Count > 0)
         {
             UpdateDeckDisplay();
@@ -85,10 +109,8 @@ public class DeckSelector : NetworkBehaviour
 
     private void LoadDeckData()
     {
-        // 載入所有卡組數據
         availableDecks.AddRange(GameDeckDatabase.Decks);
 
-        // 預先載入所有預覽圖
         foreach (var deck in availableDecks)
         {
             Sprite preview = Resources.Load<Sprite>(deck.preview_imgae_path);
@@ -142,7 +164,6 @@ public class DeckSelector : NetworkBehaviour
                 return;
             }
             int selectedDeckId = availableDecks[currentDeckIndex].id;
-            // 使用 GameDeckManager 來儲存選擇
             GameDeckManager.Instance.SetPlayerDeck(runner.LocalPlayer, selectedDeckId);
         }
     }
@@ -154,7 +175,7 @@ public class DeckSelector : NetworkBehaviour
         audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);//yu
         panelPop.SetActive(false);
         deckDescriptPop.SetActive(true);
-        
+
     }
 
     private void CloseDescriptPop()
@@ -163,7 +184,7 @@ public class DeckSelector : NetworkBehaviour
         audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);//yu
         panelPop.SetActive(true);
         deckDescriptPop.SetActive(false);
-        
+
     }
     //
 
@@ -213,7 +234,6 @@ public class DeckSelector : NetworkBehaviour
             nextButton.onClick.RemoveAllListeners();
     }
 
-    // 獲取當前選擇的卡組ID
     public int GetSelectedDeckId()
     {
         if (currentDeckIndex >= 0 && currentDeckIndex < availableDecks.Count)
