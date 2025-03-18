@@ -59,6 +59,7 @@ public class DeckSelector : NetworkBehaviour
             return;
 
         // 在描述窗口開啟時，只處理關閉描述窗口的輸入
+        /*
         if (isDescriptionOpen)
         {
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Escape))
@@ -68,25 +69,30 @@ public class DeckSelector : NetworkBehaviour
             }
             return;
         }
+        */
 
         // 左箭頭鍵或 A 鍵 - 移動到前一個按鈕
-        if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
+        if ((Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) && (isDescriptionOpen == false))
         {
+            print("------------------------------press A-------------------------");
             NavigateButtons(-1);
             lastKeyInputTime = Time.time;
         }
         // 右箭頭鍵或 D 鍵 - 移動到下一個按鈕
-        else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
+        else if ((Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D)) && (isDescriptionOpen == false))
         {
+            print("------------------------------press D-------------------------");
             NavigateButtons(1);
             lastKeyInputTime = Time.time;
         }
         // Enter 鍵 - 按下當前選中的按鈕
         else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
         {
+            print("------------------------------press ENTER-------------------------");
             PressSelectedButton();
             lastKeyInputTime = Time.time;
         }
+        print("-----------------------------------"+currentButtonIndex+"--------------------------------------");
     }
 
     // 在按鈕間導航
@@ -101,13 +107,13 @@ public class DeckSelector : NetworkBehaviour
         currentButtonIndex += direction;
 
         // 確保索引在有效範圍內
-        if (currentButtonIndex >= navigationButtons.Count)
+        if (currentButtonIndex >= navigationButtons.Count - 1)
         {
             currentButtonIndex = 0;
         }
         else if (currentButtonIndex < 0)
         {
-            currentButtonIndex = navigationButtons.Count - 1;
+            currentButtonIndex = navigationButtons.Count - 2;
         }
 
         // 設置新按鈕的視覺選中效果
@@ -322,6 +328,7 @@ public class DeckSelector : NetworkBehaviour
 
         if (deckDescriptCloseButton != null)
         {
+            navigationButtons.Add(deckDescriptCloseButton);
             deckDescriptCloseButton.onClick.RemoveAllListeners();
             deckDescriptCloseButton.onClick.AddListener(() => CloseDescriptPop());
 
@@ -517,9 +524,11 @@ public class DeckSelector : NetworkBehaviour
         panelPop.SetActive(false);
         deckDescriptPop.SetActive(true);
         isDescriptionOpen = true;
-
+        currentButtonIndex = 4;
+        //SetButtonSelected(navigationButtons[currentButtonIndex], false);
+        
         // 確保文字在 Pop 顯示後能正確刷新
-        StartCoroutine(ForceRefreshAfterDelay());
+        //StartCoroutine(ForceRefreshAfterDelay());
     }
 
     private void CloseDescriptPop()
@@ -529,6 +538,7 @@ public class DeckSelector : NetworkBehaviour
         panelPop.SetActive(true);
         deckDescriptPop.SetActive(false);
         isDescriptionOpen = false;
+        currentButtonIndex = 2;
     }
 
     private void UpdateDeckDisplay()
