@@ -5,13 +5,14 @@ using System.Collections.Generic;
 using Fusion;
 using System.Collections;
 
-// 修改 DeckSelector 以配合新的輸入控制系統
+// 修改 DeckSelector 以支援按鈕導航和 Enter 鍵確認
 public class DeckSelector : NetworkBehaviour
 {
     [Header("UI Elements")]
     [SerializeField] private Button previousButton;
-    [SerializeField] private Button nextButton;
+    [SerializeField] private Button confirmButton; // 確認按鈕
     [SerializeField] private Button deckDescriptOpenButton;
+    [SerializeField] private Button nextButton;
     [SerializeField] private Button deckDescriptCloseButton;
     [SerializeField] private GameObject deckDescriptPop;
     [SerializeField] private GameObject panelPop;
@@ -24,11 +25,22 @@ public class DeckSelector : NetworkBehaviour
     [SerializeField] private float keyInputCooldown = 0.3f; // 按鍵冷卻時間
     private float lastKeyInputTime = 0f;
 
+    [Header("Selection Visual Settings")]
+    [SerializeField] private Color selectedTextColor = new Color(0.1f, 0.6f, 1f, 1f); // 選中時的文字顏色（藍色）
+    [SerializeField] private Color normalTextColor = Color.black; // 正常狀態的文字顏色
+    [SerializeField] private Color selectedButtonColor = new Color(1f, 0.92f, 0.4f, 1f); // 選中時的按鈕顏色
+
     private int currentDeckIndex = 0;
+    private int currentButtonIndex = 0; // 目前選中的按鈕索引
+    private List<Button> navigationButtons = new List<Button>(); // 按鈕導航列表
     private List<GameDeckData> availableDecks = new List<GameDeckData>();
     private Dictionary<string, Sprite> previewSprites = new Dictionary<string, Sprite>();
     private NetworkRunner runner;
     private bool isInitialized = false;
+    private bool isDescriptionOpen = false; // 追蹤描述視窗是否開啟
+    private Dictionary<Button, Coroutine> selectionEffects = new Dictionary<Button, Coroutine>();
+    // 儲存按鈕原始文字顏色
+    private Dictionary<Button, Color> originalTextColors = new Dictionary<Button, Color>();
 
     private void Awake()
     {
@@ -46,17 +58,172 @@ public class DeckSelector : NetworkBehaviour
         if (Time.time - lastKeyInputTime < keyInputCooldown)
             return;
 
-        // 左箭頭鍵或 A 鍵
+        // 在描述窗口開啟時，只處理關閉描述窗口的輸入
+        if (isDescriptionOpen)
+        {
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Escape))
+            {
+                CloseDescriptPop();
+                lastKeyInputTime = Time.time;
+            }
+            return;
+        }
+
+        // 左箭頭鍵或 A 鍵 - 移動到前一個按鈕
         if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
         {
-            ChangeDeck(-1);
+            NavigateButtons(-1);
             lastKeyInputTime = Time.time;
         }
-        // 右箭頭鍵或 D 鍵
+        // 右箭頭鍵或 D 鍵 - 移動到下一個按鈕
         else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
         {
-            ChangeDeck(1);
+            NavigateButtons(1);
             lastKeyInputTime = Time.time;
+        }
+        // Enter 鍵 - 按下當前選中的按鈕
+        else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+        {
+            PressSelectedButton();
+            lastKeyInputTime = Time.time;
+        }
+    }
+
+    // 在按鈕間導航
+    private void NavigateButtons(int direction)
+    {
+        audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);
+
+        // 取消當前按鈕的視覺選中效果
+        SetButtonSelected(navigationButtons[currentButtonIndex], false);
+
+        // 計算新的按鈕索引
+        currentButtonIndex += direction;
+
+        // 確保索引在有效範圍內
+        if (currentButtonIndex >= navigationButtons.Count)
+        {
+            currentButtonIndex = 0;
+        }
+        else if (currentButtonIndex < 0)
+        {
+            currentButtonIndex = navigationButtons.Count - 1;
+        }
+
+        // 設置新按鈕的視覺選中效果
+        SetButtonSelected(navigationButtons[currentButtonIndex], true);
+    }
+
+    // 按下當前選中的按鈕
+    private void PressSelectedButton()
+    {
+        if (currentButtonIndex >= 0 && currentButtonIndex < navigationButtons.Count)
+        {
+            Button selectedButton = navigationButtons[currentButtonIndex];
+
+            // 模擬按鈕點擊
+            if (selectedButton.interactable)
+            {
+                selectedButton.onClick.Invoke();
+            }
+        }
+    }
+
+    // 設置按鈕的視覺選中狀態（增加文字變色效果）
+    private void SetButtonSelected(Button button, bool isSelected)
+    {
+        if (button == null)
+            return;
+
+        // 1. 按鈕脈動效果
+        if (isSelected)
+        {
+            // 啟動閃爍效果
+            if (!selectionEffects.ContainsKey(button))
+            {
+                selectionEffects[button] = StartCoroutine(PulseEffect(button));
+            }
+        }
+        else
+        {
+            // 停止閃爍效果
+            if (selectionEffects.ContainsKey(button))
+            {
+                StopCoroutine(selectionEffects[button]);
+                selectionEffects.Remove(button);
+
+                // 重置按鈕顏色
+                Image img = button.GetComponent<Image>();
+                if (img != null)
+                {
+                    img.color = Color.white;
+                }
+            }
+        }
+
+        // 2. 文字顏色變化
+        // 尋找按鈕中的所有文字元件
+        Text[] texts = button.GetComponentsInChildren<Text>(true);
+        TextMeshProUGUI[] tmpTexts = button.GetComponentsInChildren<TextMeshProUGUI>(true);
+
+        // 設置 Unity UI Text 顏色
+        foreach (Text text in texts)
+        {
+            if (!originalTextColors.ContainsKey(button) && text != null)
+            {
+                originalTextColors[button] = text.color;
+            }
+
+            if (isSelected)
+            {
+                text.color = selectedTextColor;
+                // 可選：設置粗體
+                text.fontStyle = FontStyle.Bold;
+            }
+            else
+            {
+                text.color = originalTextColors.ContainsKey(button) ? originalTextColors[button] : normalTextColor;
+                text.fontStyle = FontStyle.Normal;
+            }
+        }
+
+        // 設置 TextMeshPro 文字顏色
+        foreach (TextMeshProUGUI tmpText in tmpTexts)
+        {
+            if (!originalTextColors.ContainsKey(button) && tmpText != null)
+            {
+                originalTextColors[button] = tmpText.color;
+            }
+
+            if (isSelected)
+            {
+                tmpText.color = selectedTextColor;
+                // 可選：設置粗體
+                tmpText.fontStyle = TMPro.FontStyles.Bold;
+            }
+            else
+            {
+                tmpText.color = originalTextColors.ContainsKey(button) ? originalTextColors[button] : normalTextColor;
+                tmpText.fontStyle = TMPro.FontStyles.Normal;
+            }
+        }
+    }
+
+    private IEnumerator PulseEffect(Button button)
+    {
+        Image img = button.GetComponent<Image>();
+        if (img == null) yield break;
+
+        float time = 0;
+
+        while (true)
+        {
+            // 在白色和亮黃色之間脈動
+            float pulse = (Mathf.Sin(time * 3f) + 1f) / 2f;
+            img.color = Color.Lerp(Color.white, selectedButtonColor, pulse);
+
+            time += Time.deltaTime;
+            yield return null;
         }
     }
 
@@ -88,6 +255,13 @@ public class DeckSelector : NetworkBehaviour
         // 再次更新一次，確保 UI 元素完全更新
         yield return new WaitForEndOfFrame();
         ForceRefreshUI();
+
+        // 初始化時選中第一個按鈕
+        if (navigationButtons.Count > 0)
+        {
+            currentButtonIndex = 0;
+            SetButtonSelected(navigationButtons[currentButtonIndex], true);
+        }
     }
 
     private void OnEnable()
@@ -101,28 +275,120 @@ public class DeckSelector : NetworkBehaviour
 
     private void SetupButtons()
     {
+        // 清空並重新建立導航按鈕列表（按照畫面順序: 左鍵, 確認鍵, 卡組描述, 右鍵）
+        navigationButtons.Clear();
+        originalTextColors.Clear(); // 清空原始顏色緩存
+
         if (previousButton != null)
         {
+            navigationButtons.Add(previousButton);
             previousButton.onClick.RemoveAllListeners();
             previousButton.onClick.AddListener(() => ChangeDeck(-1));
+
+            // 存儲按鈕文字的原始顏色
+            StoreOriginalTextColors(previousButton);
         }
 
-        if (nextButton != null)
+        if (confirmButton != null)
         {
-            nextButton.onClick.RemoveAllListeners();
-            nextButton.onClick.AddListener(() => ChangeDeck(1));
+            navigationButtons.Add(confirmButton);
+            confirmButton.onClick.RemoveAllListeners();
+            // 確認按鈕現在會呼叫確認卡組並切換到下一頁
+            confirmButton.onClick.AddListener(() => ConfirmDeckSelection());
+
+            // 存儲按鈕文字的原始顏色
+            StoreOriginalTextColors(confirmButton);
         }
 
         if (deckDescriptOpenButton != null)
         {
+            navigationButtons.Add(deckDescriptOpenButton);
             deckDescriptOpenButton.onClick.RemoveAllListeners();
             deckDescriptOpenButton.onClick.AddListener(() => OpenDescriptPop());
+
+            // 存儲按鈕文字的原始顏色
+            StoreOriginalTextColors(deckDescriptOpenButton);
+        }
+
+        if (nextButton != null)
+        {
+            navigationButtons.Add(nextButton);
+            nextButton.onClick.RemoveAllListeners();
+            nextButton.onClick.AddListener(() => ChangeDeck(1));
+
+            // 存儲按鈕文字的原始顏色
+            StoreOriginalTextColors(nextButton);
         }
 
         if (deckDescriptCloseButton != null)
         {
             deckDescriptCloseButton.onClick.RemoveAllListeners();
             deckDescriptCloseButton.onClick.AddListener(() => CloseDescriptPop());
+
+            // 存儲按鈕文字的原始顏色
+            StoreOriginalTextColors(deckDescriptCloseButton);
+        }
+
+        // 初始化所有按鈕為非選中狀態
+        foreach (var button in navigationButtons)
+        {
+            SetButtonSelected(button, false);
+        }
+    }
+
+    // 新增：存儲按鈕文字的原始顏色
+    private void StoreOriginalTextColors(Button button)
+    {
+        if (button == null) return;
+
+        // 檢查 Unity UI Text
+        Text text = button.GetComponentInChildren<Text>(true);
+        if (text != null)
+        {
+            originalTextColors[button] = text.color;
+            return;
+        }
+
+        // 檢查 TextMeshPro
+        TextMeshProUGUI tmpText = button.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (tmpText != null)
+        {
+            originalTextColors[button] = tmpText.color;
+        }
+    }
+
+    // 確認卡組選擇的方法，現在會切換到下一頁
+    private void ConfirmDeckSelection()
+    {
+        audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);
+
+        // 獲取當前選中的卡組ID
+        int selectedDeckId = GetSelectedDeckId();
+
+        if (selectedDeckId != -1)
+        {
+            // 這裡新增確認選擇卡組的邏輯
+            Debug.Log($"Confirmed deck selection: {selectedDeckId}");
+
+            // 如果有網絡運行器，則設置玩家卡組
+            if (runner != null && runner.IsRunning && runner.LocalPlayer != PlayerRef.None)
+            {
+                GameDeckManager.Instance.SetPlayerDeck(runner.LocalPlayer, selectedDeckId);
+
+                // 保存選擇的卡組ID
+                DeckSelector.selectedDeckId = GetSelectedDeckId();
+
+                // 找到 CanvasManager 並切換到下一頁
+                CanvasManager canvasManager = FindObjectOfType<CanvasManager>();
+                if (canvasManager != null)
+                {
+                    canvasManager.ShowNextPage();
+                }
+                else
+                {
+                    Debug.LogWarning("CanvasManager not found when trying to go to next page!");
+                }
+            }
         }
     }
 
@@ -250,6 +516,7 @@ public class DeckSelector : NetworkBehaviour
         audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);
         panelPop.SetActive(false);
         deckDescriptPop.SetActive(true);
+        isDescriptionOpen = true;
 
         // 確保文字在 Pop 顯示後能正確刷新
         StartCoroutine(ForceRefreshAfterDelay());
@@ -261,6 +528,7 @@ public class DeckSelector : NetworkBehaviour
         audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);
         panelPop.SetActive(true);
         deckDescriptPop.SetActive(false);
+        isDescriptionOpen = false;
     }
 
     private void UpdateDeckDisplay()
@@ -329,14 +597,20 @@ public class DeckSelector : NetworkBehaviour
 
     private void OnDestroy()
     {
-        if (previousButton != null)
-            previousButton.onClick.RemoveAllListeners();
+        // 停止所有正在運行的協程
+        foreach (var effect in selectionEffects.Values)
+        {
+            if (effect != null)
+                StopCoroutine(effect);
+        }
+        selectionEffects.Clear();
 
-        if (nextButton != null)
-            nextButton.onClick.RemoveAllListeners();
-
-        if (deckDescriptOpenButton != null)
-            deckDescriptOpenButton.onClick.RemoveAllListeners();
+        // 清除所有按鈕的監聽器
+        foreach (var button in navigationButtons)
+        {
+            if (button != null)
+                button.onClick.RemoveAllListeners();
+        }
 
         if (deckDescriptCloseButton != null)
             deckDescriptCloseButton.onClick.RemoveAllListeners();

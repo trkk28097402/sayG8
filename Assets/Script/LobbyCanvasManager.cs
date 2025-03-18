@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,17 +10,18 @@ public class CanvasManager : MonoBehaviour
     {
         public string pageName;
         public GameObject canvasObject;
-        public string nextPageName; // ¤U¤@­¶­±ªº¦WºÙ
-        [HideInInspector] public CanvasGroup canvasGroup; // ¨Ï¥Î CanvasGroup ±±¨î¥i¨£©Ê
-        public PageInputHandler inputHandler; // ­¶­±ªº¿é¤J³B²z¾¹
+        public string nextPageName; // ä¸‹ä¸€é åç¨±
+        [Tooltip("å‹¾é¸æ­¤é …ï¼Œä½¿æ­¤é é¢å¯ä»¥ä½¿ç”¨ Enter éµè·³è½‰åˆ°ä¸‹ä¸€é ")]
+        public bool handleEnterKey = false; // æ–°å¢ï¼šæ˜¯å¦è™•ç† Enter éµ
+        [HideInInspector] public CanvasGroup canvasGroup; // ä½¿ç”¨ CanvasGroup æ§åˆ¶å¯è¦‹æ€§
     }
 
     [Header("Canvas Pages")]
     [SerializeField] private List<CanvasPage> canvasPages = new List<CanvasPage>();
     [SerializeField] private string initialPageName = "DeckSelectCanvas";
 
-    [Header("Navigation Settings")]
-    [SerializeField] private bool useEnterKeyNavigation = true;
+    [Header("Enter Key Settings")]
+    [Tooltip("æŒ‰éµå†·å»æ™‚é–“ï¼Œé¿å…é€£çºŒè§¸ç™¼")]
     [SerializeField] private float inputCooldown = 0.3f;
 
     private CanvasPage currentActivePage;
@@ -28,8 +29,32 @@ public class CanvasManager : MonoBehaviour
 
     private void Awake()
     {
-        // ½T«O©Ò¦³­¶­±³£¦³ CanvasGroup ²Õ¥ó¨Ãªì©l¤Æª¬ºA
+        // åˆå§‹åŒ–æ‰€æœ‰é é¢
         InitializeAllPages();
+    }
+
+    private void Update()
+    {
+        // æª¢æŸ¥ç•¶å‰é é¢æ˜¯å¦éœ€è¦è™•ç† Enter éµ
+        if (currentActivePage != null && currentActivePage.handleEnterKey)
+        {
+            // æª¢æŸ¥å†·å»æ™‚é–“
+            if (Time.time - lastInputTime < inputCooldown)
+                return;
+
+            // æª¢æŸ¥ DeckSelector æ˜¯å¦å­˜åœ¨ä¸”æ´»å‹•
+            DeckSelector deckSelector = currentActivePage.canvasObject.GetComponentInChildren<DeckSelector>();
+            if (deckSelector != null && deckSelector.gameObject.activeInHierarchy)
+                return;
+
+            // è™•ç† Enter éµ
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                Debug.Log($"é é¢ '{currentActivePage.pageName}' çš„ Enter éµè¼¸å…¥å·²è™•ç†");
+                ShowNextPage();
+                lastInputTime = Time.time;
+            }
+        }
     }
 
     private void InitializeAllPages()
@@ -38,29 +63,23 @@ public class CanvasManager : MonoBehaviour
         {
             if (page.canvasObject != null)
             {
-                // ¥ı½T«O¦U­¶­±ªºGameObject¬O¿E¬¡ªº¡A¦ı³q¹LCanvasGroup¨Ó±±¨î¥i¨£©Ê
+                // ç¢ºä¿æ¯å€‹é é¢çš„ GameObject æ˜¯æ´»å‹•çš„ï¼Œä»¥ä¾¿æˆ‘å€‘å¯ä»¥è¨­ç½® CanvasGroup
                 page.canvasObject.SetActive(true);
 
-                // ½T«O¦³ CanvasGroup ²Õ¥ó
+                // ç¢ºä¿æœ‰ CanvasGroup çµ„ä»¶
                 page.canvasGroup = page.canvasObject.GetComponent<CanvasGroup>();
                 if (page.canvasGroup == null)
                 {
                     page.canvasGroup = page.canvasObject.AddComponent<CanvasGroup>();
                 }
 
-                // ÀË¬d©Î²K¥[ PageInputHandler
-                page.inputHandler = page.canvasObject.GetComponent<PageInputHandler>();
-
-                // ªì©l®É³]¬°¤£¥i¨£©M¤£¥i¥æ¤¬
+                // è¨­ç½®æ¯å€‹é é¢çš„åˆå§‹å€¼ï¼ˆä¸å¯è¦‹å’Œä¸å¯äº¤äº’ï¼‰
                 page.canvasGroup.alpha = 0f;
                 page.canvasGroup.interactable = false;
                 page.canvasGroup.blocksRaycasts = false;
 
-                // ½T«O¿é¤J³B²z¾¹ªì©l¤Æ¬°«D¬¡°Êª¬ºA
-                if (page.inputHandler != null)
-                {
-                    page.inputHandler.SetActive(false);
-                }
+                // å°‹æ‰¾æ‰€æœ‰å°èˆªæŒ‰éˆ•ä¸¦è¨­ç½®ç›£è½å™¨
+                SetupButtonListeners(page);
             }
             else
             {
@@ -69,37 +88,35 @@ public class CanvasManager : MonoBehaviour
         }
     }
 
-    private void Start()
+    // æ–°æ–¹æ³•ï¼Œè¨­ç½®æŒ‰éˆ•é»æ“Šç›£è½å™¨
+    private void SetupButtonListeners(CanvasPage page)
     {
-        // Åã¥Üªì©l­¶­±
-        ShowPage(initialPageName);
-    }
-
-    private void Update()
-    {
-        // ³o¸Ì¥u³B²z­¶­±¤Á´«¥\¯à¡A¨ãÅé­¶­±ªº¿é¤J¥Ñ¦U¦Ûªº PageInputHandler ³B²z
-        if (currentActivePage == null || !useEnterKeyNavigation)
-            return;
-
-        // ÀË¬d§N«o®É¶¡
-        if (Time.time - lastInputTime < inputCooldown)
-            return;
-
-        // «ö Enter Áä¤Á´«¨ì¤U¤@­¶
-        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+        // åœ¨æ­¤é é¢ä¸­æŸ¥æ‰¾æ‰€æœ‰æŒ‰éˆ•
+        Button[] buttons = page.canvasObject.GetComponentsInChildren<Button>(true);
+        foreach (Button button in buttons)
         {
-            if (!string.IsNullOrEmpty(currentActivePage.nextPageName))
+            // æª¢æŸ¥æ­¤æŒ‰éˆ•æ˜¯å¦æœ‰ NavigationButton çµ„ä»¶
+            NavigationButton navButton = button.GetComponent<NavigationButton>();
+            if (navButton != null && !string.IsNullOrEmpty(navButton.targetPageName))
             {
-                ShowPage(currentActivePage.nextPageName);
-                lastInputTime = Time.time;
+                // æ·»åŠ ç›£è½å™¨åˆ°æŒ‰éˆ•
+                button.onClick.AddListener(() => {
+                    ShowPage(navButton.targetPageName);
+                });
             }
         }
     }
 
+    private void Start()
+    {
+        // é¡¯ç¤ºåˆå§‹é é¢
+        ShowPage(initialPageName);
+    }
+
     /// <summary>
-    /// Åã¥Ü«ü©w­¶­±¨ÃÁôÂÃ¨ä¥L­¶­±
+    /// é¡¯ç¤ºæŒ‡å®šçš„é é¢ä¸¦éš±è—å…¶ä»–é é¢
     /// </summary>
-    /// <param name="pageName">­nÅã¥Üªº­¶­±¦WºÙ</param>
+    /// <param name="pageName">è¦é¡¯ç¤ºçš„é é¢åç¨±</param>
     public void ShowPage(string pageName)
     {
         if (string.IsNullOrEmpty(pageName))
@@ -107,7 +124,7 @@ public class CanvasManager : MonoBehaviour
 
         bool foundPage = false;
 
-        // ´M§ä­nÅã¥Üªº­¶­±
+        // å°‹æ‰¾è¦é¡¯ç¤ºçš„é é¢
         CanvasPage pageToShow = null;
         foreach (var page in canvasPages)
         {
@@ -125,14 +142,7 @@ public class CanvasManager : MonoBehaviour
             return;
         }
 
-        // ¦pªG·í«e­¶­±¦³¿é¤J³B²z¾¹¡A¸T¥Î¥¦
-        if (currentActivePage != null && currentActivePage.inputHandler != null)
-        {
-            currentActivePage.inputHandler.SetActive(false);
-        }
-
-        // ­«­n­×§ï¡G¥ı¸T¥Î©Ò¦³­¶­±ªº¥æ¤¬¡AµM«á¦A¿E¬¡¥Ø¼Ğ­¶­±
-        // ³o¥i¥H¨¾¤î¦b­¶­±¤Á´«¹Lµ{¤¤«ö¶s³Q»~Ä²µo
+        // é¦–å…ˆç¦ç”¨æ‰€æœ‰é é¢çš„äº¤äº’
         foreach (var page in canvasPages)
         {
             if (page.canvasObject != null && page.canvasGroup != null)
@@ -142,52 +152,44 @@ public class CanvasManager : MonoBehaviour
             }
         }
 
-        // µ¥«İ¤@´V½T«O¸T¥Î¥Í®Ä
+        // ä½¿ç”¨å”ç¨‹ä¾†æ¿€æ´»é é¢
         StartCoroutine(ActivatePageAfterDelay(pageToShow));
 
         Debug.Log($"Showing page: {pageName}");
     }
 
-    // ·s¼W¡G©µ¿ğ¿E¬¡­¶­±¡A½T«O¥ı«e­¶­±ªº¸T¥Î§¹¥ş¥Í®Ä
     private IEnumerator ActivatePageAfterDelay(CanvasPage pageToShow)
     {
-        // µ¥«İ¤@´V
+        // ç­‰å¾…ä¸€å¹€
         yield return null;
 
-        // ³]¸m©Ò¦³­¶­±ªº¥i¨£©Ê
+        // è¨­ç½®æ‰€æœ‰é é¢çš„å¯è¦‹æ€§
         foreach (var page in canvasPages)
         {
             if (page.canvasObject != null && page.canvasGroup != null)
             {
                 bool shouldBeActive = (page == pageToShow);
 
-                // ¨Ï¥Î CanvasGroup ±±¨î¥i¨£©Ê¦Ó¤£¬O±Ò¥Î/¸T¥ÎGameObject
+                // ä½¿ç”¨ CanvasGroup æ§åˆ¶å¯è¦‹æ€§
                 page.canvasGroup.alpha = shouldBeActive ? 1f : 0f;
                 page.canvasGroup.interactable = shouldBeActive;
                 page.canvasGroup.blocksRaycasts = shouldBeActive;
-
-                // ±±¨î¿é¤J³B²z
-                if (page.inputHandler != null)
-                {
-                    page.inputHandler.SetActive(shouldBeActive);
-                }
             }
         }
 
-        // §ó·s·í«e¬¡°Ê­¶­±
+        // æ›´æ–°ç•¶å‰æ´»å‹•é é¢
         currentActivePage = pageToShow;
 
-        // ¦b­¶­±¤Á´««á±j¨î¨ê·s UI
+        // é é¢æ›´æ”¹å¾Œåˆ·æ–°UI
         StartCoroutine(ForceRefreshAfterPageChange());
     }
 
-    // ­¶­±¤Á´««á±j¨î¨ê·s UI
     private IEnumerator ForceRefreshAfterPageChange()
     {
-        // µ¥«İ¤@´V½T«O UI ²Õ¥ó¦³®É¶¡§ó·s
+        // ç­‰å¾…ä¸€å¹€ï¼Œç¢ºä¿UIæœ‰æ™‚é–“æ›´æ–°
         yield return null;
 
-        // ±j¨î§ó·s©Ò¦³ Canvas
+        // åˆ·æ–°æ‰€æœ‰Canvas
         Canvas[] canvases = FindObjectsOfType<Canvas>();
         foreach (Canvas canvas in canvases)
         {
@@ -195,33 +197,32 @@ public class CanvasManager : MonoBehaviour
             canvas.enabled = true;
         }
 
-        // ±j¨î§ó·s CanvasGroup
+        // åˆ·æ–°CanvasGroup
         if (currentActivePage != null && currentActivePage.canvasGroup != null)
         {
-            // Ä²µo­«·sÃ¸»s
+            // è§¸ç™¼åˆ·æ–°
             currentActivePage.canvasGroup.alpha = 0.99f;
             yield return null;
             currentActivePage.canvasGroup.alpha = 1f;
         }
 
-        // ±j¨î§ó·s Canvas
+        // å¼·åˆ¶Canvasæ›´æ–°
         Canvas.ForceUpdateCanvases();
 
-        // ³qª¾·í«e­¶­±¤w³Q¿E¬¡
+        // é€šçŸ¥ç³»çµ±ï¼Œé é¢ç¾åœ¨å·²æ¿€æ´»
         if (currentActivePage != null && currentActivePage.canvasObject != null)
         {
-            // ÀË¬d¬O§_¦³ GameReadySystem ¤¸¥ó¨Ã³qª¾¥¦­¶­±¤w¿E¬¡
+            // æª¢æŸ¥æ˜¯å¦æœ‰GameReadySystemä¸¦é€šçŸ¥å®ƒ
             GameReadySystem gameReadySystem = currentActivePage.canvasObject.GetComponentInChildren<GameReadySystem>();
             if (gameReadySystem != null)
             {
                 gameReadySystem.OnPageActivated();
             }
 
-            // ÀË¬d¬O§_¦³ DeckSelector ¤¸¥ó¨Ã±j¨î¨ê·s
+            // æª¢æŸ¥æ˜¯å¦æœ‰DeckSelectorä¸¦åˆ·æ–°å®ƒ
             DeckSelector deckSelector = currentActivePage.canvasObject.GetComponentInChildren<DeckSelector>();
             if (deckSelector != null && deckSelector.enabled)
             {
-                // ©µ¿ğ¤@´V«á¦A½Õ¥Î ForceRefreshUI ¤èªk
                 StartCoroutine(DelayedDeckSelectorRefresh(deckSelector));
             }
         }
@@ -230,7 +231,7 @@ public class CanvasManager : MonoBehaviour
     private IEnumerator DelayedDeckSelectorRefresh(DeckSelector deckSelector)
     {
         yield return null;
-        // ¤Ï®g½Õ¥Î¨p¦³¤èªk ForceRefreshUI (¦pªGµLªkª½±µ½Õ¥Î¡A§A¥i¥H¦Ò¼{¦b DeckSelector ¤¤²K¥[¤@­Ó¤½¦@¤èªk)
+        // ä½¿ç”¨åå°„èª¿ç”¨ForceRefreshUIæ–¹æ³•
         System.Reflection.MethodInfo method = typeof(DeckSelector).GetMethod("ForceRefreshUI",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (method != null)
@@ -240,22 +241,27 @@ public class CanvasManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Åã¥Ü°ò©ó·í«e­¶­±ªº nextPageName ªº¤U¤@­¶
+    /// é¡¯ç¤ºç•¶å‰é é¢ä¸­å®šç¾©çš„ä¸‹ä¸€é 
     /// </summary>
     public void ShowNextPage()
     {
         if (currentActivePage != null && !string.IsNullOrEmpty(currentActivePage.nextPageName))
         {
+            Debug.Log($"CanvasManager: å¾ '{currentActivePage.pageName}' åˆ‡æ›åˆ° '{currentActivePage.nextPageName}'");
             ShowPage(currentActivePage.nextPageName);
+        }
+        else
+        {
+            Debug.LogWarning($"CanvasManager: ç„¡æ³•åˆ‡æ›åˆ°ä¸‹ä¸€é ã€‚ç•¶å‰é é¢: '{(currentActivePage?.pageName ?? "null")}', ä¸‹ä¸€é åç¨±: '{(currentActivePage?.nextPageName ?? "null")}'");
         }
     }
 
     /// <summary>
-    /// ¦b¹B¦æ®É²K¥[·sªº Canvas ­¶­±
+    /// åœ¨é‹è¡Œæ™‚æ·»åŠ æ–°çš„Canvasé é¢
     /// </summary>
     public void AddCanvasPage(string pageName, GameObject canvasObject, string nextPageName = "")
     {
-        // ÀË¬d­¶­±¬O§_¤w¦s¦b
+        // æª¢æŸ¥é é¢æ˜¯å¦å·²å­˜åœ¨
         foreach (var page in canvasPages)
         {
             if (page.pageName == pageName)
@@ -265,40 +271,35 @@ public class CanvasManager : MonoBehaviour
             }
         }
 
-        // ³Ğ«Ø¨Ã²K¥[·s­¶­±
+        // å‰µå»ºä¸¦æ·»åŠ æ–°é é¢
         CanvasPage newPage = new CanvasPage
         {
             pageName = pageName,
             canvasObject = canvasObject,
-            nextPageName = nextPageName
+            nextPageName = nextPageName,
+            handleEnterKey = false // é»˜èªä¸è™•ç†Enteréµ
         };
 
-        // ½T«O¦³ CanvasGroup ²Õ¥ó©M¿é¤J³B²z¾¹
+        // è¨­ç½®CanvasGroup
         if (canvasObject != null)
         {
-            // ½T«Oª«¥ó³B©ó¿E¬¡ª¬ºA
+            // ç¢ºä¿å°è±¡è™•æ–¼æ´»å‹•ç‹€æ…‹
             canvasObject.SetActive(true);
 
-            // Àò¨ú©Î²K¥[ CanvasGroup
+            // ç²å–æˆ–æ·»åŠ CanvasGroup
             newPage.canvasGroup = canvasObject.GetComponent<CanvasGroup>();
             if (newPage.canvasGroup == null)
             {
                 newPage.canvasGroup = canvasObject.AddComponent<CanvasGroup>();
             }
 
-            // Àò¨ú¿é¤J³B²z¾¹
-            newPage.inputHandler = canvasObject.GetComponent<PageInputHandler>();
-
-            // ªì©l¤Æ¬°¤£¥i¨£
+            // åˆå§‹åŒ–ç‚ºä¸å¯è¦‹
             newPage.canvasGroup.alpha = 0f;
             newPage.canvasGroup.interactable = false;
             newPage.canvasGroup.blocksRaycasts = false;
 
-            // ªì©l¤Æ¸T¥Î¿é¤J
-            if (newPage.inputHandler != null)
-            {
-                newPage.inputHandler.SetActive(false);
-            }
+            // ç‚ºæ–°é é¢è¨­ç½®æŒ‰éˆ•ç›£è½å™¨
+            SetupButtonListeners(newPage);
         }
 
         canvasPages.Add(newPage);
@@ -307,7 +308,7 @@ public class CanvasManager : MonoBehaviour
     }
 
     /// <summary>
-    /// §ó·s²{¦³ Canvas ­¶­±ªº¤U¤@­¶
+    /// æ›´æ–°Canvasé é¢çš„ä¸‹ä¸€é 
     /// </summary>
     public void SetNextPage(string pageName, string nextPageName)
     {
@@ -322,43 +323,22 @@ public class CanvasManager : MonoBehaviour
 
         Debug.LogWarning($"Canvas page '{pageName}' not found!");
     }
-}
 
-// «O«ù PageInputHandler ¤£ÅÜ
-public class PageInputHandler : MonoBehaviour
-{
-    // ¥]§t©Ò¦³»İ­n¦b¦¹­¶­±¿E¬¡ªº¿é¤J³B²z¸}¥»
-    [SerializeField] private List<MonoBehaviour> inputHandlerScripts = new List<MonoBehaviour>();
-
-    // ½T©w¦¹­¶­±·í«e¬O§_À³¸Ó±µ¦¬¿é¤J
-    private bool _isActive = false;
-
-    public void SetActive(bool active)
+    /// <summary>
+    /// å•Ÿç”¨æˆ–ç¦ç”¨é é¢çš„Enteréµè™•ç†
+    /// </summary>
+    public void SetEnterKeyHandling(string pageName, bool enableEnterKey)
     {
-        if (_isActive == active)
-            return;
-
-        _isActive = active;
-
-        // ¿E¬¡©Î¸T¥Î©Ò¦³¿é¤J³B²z¸}¥»
-        foreach (var handler in inputHandlerScripts)
+        foreach (var page in canvasPages)
         {
-            if (handler != null)
+            if (page.pageName == pageName)
             {
-                handler.enabled = active;
+                page.handleEnterKey = enableEnterKey;
+                Debug.Log($"Set Enter key handling for page '{pageName}' to {enableEnterKey}");
+                return;
             }
         }
 
-        // ¦pªG¿E¬¡¡A½T«O¦¹ª«¥ó¬O¿E¬¡ªº¡A³o¼Ë Update ¤èªk·|³Q½Õ¥Î
-        this.enabled = active;
-    }
-
-    // ·íª«¥ó³Q¸T¥Î®É¦Û°Ê¸T¥Î©Ò¦³¿é¤J³B²z
-    private void OnDisable()
-    {
-        if (_isActive)
-        {
-            SetActive(false);
-        }
+        Debug.LogWarning($"Canvas page '{pageName}' not found for Enter key setting!");
     }
 }
