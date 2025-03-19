@@ -13,8 +13,8 @@ public class TurnNotificationManager : NetworkBehaviour
     [SerializeField] private TextMeshProUGUI notificationText;
 
     [Header("Game Start Info Panel")]
-    [SerializeField] private GameObject gameStartInfoPanel; // 遊戲開始信息面板
-    [SerializeField] private TextMeshProUGUI gameStartInfoText; // 遊戲開始信息文本
+    [SerializeField] private GameObject gameStartInfoPanel;
+    [SerializeField] private TextMeshProUGUI gameStartInfoText;
 
     [Header("Optional References")]
     [SerializeField] private Canvas targetCanvas;
@@ -23,14 +23,15 @@ public class TurnNotificationManager : NetworkBehaviour
     [SerializeField] private float showDuration = 2f;
     [SerializeField] private float fadeDuration = 0.5f;
     [SerializeField] private float slideDistance = 100f;
-    [SerializeField] private float gameStartInfoDuration = 5f; // New: Duration for game start info notification
+    [SerializeField] private float gameStartInfoDuration = 5f;
 
     [Header("Colors")]
     [SerializeField] private Color yourTurnColor = new Color(0.2f, 0.6f, 1f);
     [SerializeField] private Color opponentTurnColor = new Color(1f, 0.4f, 0.4f);
     [SerializeField] private Color gameStartColor = new Color(0.3f, 0.8f, 0.3f);
     [SerializeField] private Color normalTextColor = new Color(0f, 0f, 1f);
-    [SerializeField] private Color gameInfoColor = new Color(0.8f, 0.6f, 0.2f); // New: Color for game info notification
+    [SerializeField] private Color gameInfoColor = new Color(0.8f, 0.6f, 0.2f);
+    [SerializeField] private Color timeoutColor = new Color(1f, 0.2f, 0.2f);
 
     private RectTransform panelRect;
     private NetworkRunner runner;
@@ -214,6 +215,7 @@ public class TurnNotificationManager : NetworkBehaviour
     {
         if (!isInitialized || !TurnManager.Instance || !runner)
             return;
+
         if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(runner.LocalPlayer))
         {
             string playerText = TurnManager.Instance.GetCurrentTurnPlayer().PlayerId == 1 ? "玩家1" : "玩家2";
@@ -477,6 +479,30 @@ public class TurnNotificationManager : NetworkBehaviour
 
         // Note: This animation doesn't include the auto-hide feature
         // It will remain visible until HideNotification is called
+    }
+
+    // New method to show timeout notification
+    public void ShowTimeoutNotification(PlayerRef timeoutPlayer, PlayerRef winnerPlayer)
+    {
+        if (!isInitialized || !runner)
+            return;
+
+        string message;
+
+        if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(runner.LocalPlayer))
+        {
+            string timeoutPlayerName = timeoutPlayer.PlayerId == 1 ? "玩家1" : "玩家2";
+            string winnerPlayerName = winnerPlayer.PlayerId == 1 ? "玩家1" : "玩家2";
+            message = $"{timeoutPlayerName}時間到！{winnerPlayerName}勝利！";
+        }
+        else
+        {
+            string timeoutPlayerName = timeoutPlayer == runner.LocalPlayer ? "你" : "對手";
+            string winnerPlayerName = winnerPlayer == runner.LocalPlayer ? "你" : "對手";
+            message = $"{timeoutPlayerName}時間到！{winnerPlayerName}勝利！";
+        }
+
+        ShowNotification(message, timeoutColor);
     }
 
     // Add this method to hide the notification
