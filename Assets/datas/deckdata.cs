@@ -37,7 +37,7 @@ public class GameDeckDatabase
         {
             deckName = "八點檔",
             cardCount = 40,
-            id = 1,
+            id = 2,
             preview_imgae_path = "UI/Deck_preview_Image/8oclock",
             description = "台灣白爛的八點檔梗圖",
             deck_path = "Decks/8oclock"
