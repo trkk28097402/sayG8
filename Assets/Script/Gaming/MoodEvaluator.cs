@@ -114,7 +114,7 @@ public class MoodEvaluator : NetworkBehaviour
     [SerializeField] private GameObject responseBG;
 
     [Networked]
-    private NetworkDictionary<PlayerRef, MoodState> PlayerMoods { get; }
+    public NetworkDictionary<PlayerRef, MoodState> PlayerMoods { get; }
 
     private struct PlayedCardContext
     {
@@ -294,12 +294,12 @@ public class MoodEvaluator : NetworkBehaviour
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void Rpc_SyncMoodValue(PlayerRef targetPlayer, float moodValue, NetworkString<_32> assignedMood)
+    public void Rpc_SyncMoodValue(PlayerRef targetPlayer, float moodValue, NetworkString<_32> assignedMood)
     {
         Debug.Log($"[MoodEvaluator] Received mood sync - Player: {targetPlayer}, Value: {moodValue}, Mood: {assignedMood}");
 
         // 更新網路狀態
-        if (PlayerMoods.TryGet(targetPlayer, out var currentMood))
+        if (PlayerMoods.ContainsKey(targetPlayer))
         {
             var newMood = new MoodState
             {
@@ -307,6 +307,17 @@ public class MoodEvaluator : NetworkBehaviour
                 MoodValue = moodValue
             };
             PlayerMoods.Set(targetPlayer, newMood);
+        }
+        else
+        {
+            // 如果玩家不存在於PlayerMoods中，添加它
+            var newMood = new MoodState
+            {
+                AssignedMood = assignedMood,
+                MoodValue = moodValue
+            };
+            PlayerMoods.Add(targetPlayer, newMood);
+            Debug.Log($"[MoodEvaluator] Added new mood entry for player {targetPlayer}: {assignedMood}");
         }
 
         // 更新UI和icon
