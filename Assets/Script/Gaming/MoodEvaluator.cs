@@ -46,7 +46,7 @@ public class ImageUrl
 [Serializable]
 public class ClaudeRequest
 {
-    public string model = "claude-3-5-sonnet-20241022";
+    public string model = "claude-3-7-sonnet-20250219";
     public int max_tokens = 1024;
     public string system;  // 頂層系統提示
     public List<ClaudeMessage> messages;
@@ -584,7 +584,7 @@ public class MoodEvaluator : NetworkBehaviour
 
         var request = new ClaudeRequest
         {
-            model = "claude-3-5-sonnet-20241022",
+            model = "claude-3-7-sonnet-20250219",
             max_tokens = 1024,
             system = systemPrompt,
             messages = claudeMessages

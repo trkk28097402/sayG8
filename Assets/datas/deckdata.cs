@@ -33,6 +33,7 @@ public class GameDeckDatabase
             description = "童年回憶卡通海綿寶寶為主題，擁有各種嗆聲名言，是對於提升火爆值非常有幫助的牌組",
             deck_path = "Decks/SpongeBob"
         },
+        /*
         new GameDeckData
         {
             deckName = "八點檔",
@@ -51,6 +52,16 @@ public class GameDeckDatabase
             description = "台灣各式各異的新聞截圖",
             deck_path = "Decks/News"
         },
+        new GameDeckData
+        {
+            deckName = "銀魂",
+            cardCount = 40,
+            id = 4,
+            preview_imgae_path = "UI/Deck_preview_Image/GinTama",
+            description = "銀魂",
+            deck_path = "Decks/GinTama"
+        },
+        */
     };
 
     public GameDeckData GetDeckById(int id)
