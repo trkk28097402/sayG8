@@ -42,6 +42,15 @@ public class GameDeckDatabase
             description = "台灣白爛的八點檔梗圖",
             deck_path = "Decks/8oclock"
         },
+        new GameDeckData
+        {
+            deckName = "台灣新聞",
+            cardCount = 40,
+            id = 3,
+            preview_imgae_path = "UI/Deck_preview_Image/News",
+            description = "台灣各式各異的新聞截圖",
+            deck_path = "Decks/News"
+        },
     };
 
     public GameDeckData GetDeckById(int id)
