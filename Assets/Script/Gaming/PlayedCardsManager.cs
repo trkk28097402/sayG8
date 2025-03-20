@@ -95,6 +95,19 @@ public class PlayedCardsManager : NetworkBehaviour
             return;
         }
 
+        // Get reference to MoodEvaluator
+        if (moodEvaluator == null)
+        {
+            moodEvaluator = FindObjectOfType<MoodEvaluator>();
+        }
+
+        // Check if game is over
+        if (moodEvaluator != null && moodEvaluator.IsGameFinished())
+        {
+            Debug.Log("Cannot play card - game is over");
+            return;
+        }
+
         if (!isInitialized || isProcessingCard || IsWaitingForMoodEvaluation)
         {
             Debug.Log("Cannot play card now - system not ready, processing another card, or waiting for mood evaluation");

@@ -201,6 +201,14 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
     public void PlayCard()
     {
+        // Check if game is over
+        var moodEvaluator = FindObjectOfType<MoodEvaluator>();
+        if (moodEvaluator != null && moodEvaluator.IsGameFinished())
+        {
+            Debug.Log("Cannot play card - game is over");
+            return;
+        }
+
         audioManagerClassroom.PlaySoundEffectClassroom(audioManagerClassroom.CardUseSound);//yu
         Debug.Log("PlayCard method called");
         var cardOnHand = GetComponentInParent<CardOnHand>();
@@ -222,7 +230,7 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
             Debug.Log("Found PlayedCardsManager, calling PlayCard");
             playedCardsManager.PlayCard(cardData, cardIndex);
 
-            // іqЄѕ CardOnHand іBІzҐdµPІѕ°Ј
+            // Notify CardOnHand to handle card played
             cardOnHand.HandleCardPlayed(cardIndex);
         }
         else

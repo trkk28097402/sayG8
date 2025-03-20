@@ -242,13 +242,36 @@ public class TurnManager : NetworkBehaviour
             yield return new WaitForSeconds(0.2f);
         }
 
+        // 修改為新的訊息格式
+        bool isObserver = ObserverManager.Instance != null &&
+                         ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
+
         string player1MoodInfo = GetPlayerMoodInfo(players[0]);
         string player1DeckInfo = GetPlayerDeckInfo(players[0]);
-        string player1Display = $"玩家1: {player1MoodInfo}, 使用 {player1DeckInfo}";
-
         string player2MoodInfo = GetPlayerMoodInfo(players[1]);
         string player2DeckInfo = GetPlayerDeckInfo(players[1]);
-        string player2Display = $"玩家2: {player2MoodInfo}, 使用 {player2DeckInfo}";
+
+        string player1Display;
+        string player2Display;
+
+        if (isObserver)
+        {
+            // 觀察者視角
+            player1Display = $"玩家1的目標氣氛: {player1MoodInfo}";
+            player2Display = $"玩家2的目標氣氛: {player2MoodInfo}";
+        }
+        else if (Runner.LocalPlayer == players[0])
+        {
+            // 玩家1視角
+            player1Display = $"你的目標氣氛: {player1MoodInfo}";
+            player2Display = $"對手的目標氣氛: {player2MoodInfo}";
+        }
+        else
+        {
+            // 玩家2視角
+            player1Display = $"對手的目標氣氛: {player1MoodInfo}";
+            player2Display = $"你的目標氣氛: {player2MoodInfo}";
+        }
 
         if (turnNotificationManager != null)
         {
@@ -660,6 +683,29 @@ public class TurnManager : NetworkBehaviour
             IsTimerRunning = false;
             TimerDuration = remainingTime;
             Rpc_SyncTimerState(false, remainingTime);
+        }
+    }
+
+    public void PauseTimerPermanently()
+    {
+        if (Object.HasStateAuthority)
+        {
+            IsTimerRunning = false;
+            Rpc_PauseTimerPermanently();
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_PauseTimerPermanently()
+    {
+        Debug.Log("Timer permanently paused due to game ending");
+        IsTimerRunning = false;
+        localTimerPaused = true;
+
+        // Clear the timer display
+        if (timerText != null)
+        {
+            timerText.text = "";
         }
     }
 

@@ -1868,7 +1868,7 @@ PrefabInstance:
     - target: {fileID: 7937704772368446591, guid: 16c2a7369c34f9f45b8a29a79ed53cb2, type: 3}
       propertyPath: PlayerPrefab
       value: 
-      objectReference: {fileID: 4691051790610027725, guid: 2e64815129ffccc42809d8ce637f3a31, type: 3}
+      objectReference: {fileID: 3364404435958766693, guid: 6adfbb15cef93f14f81ffde882437351, type: 3}
     - target: {fileID: 7937704772368446591, guid: 16c2a7369c34f9f45b8a29a79ed53cb2, type: 3}
       propertyPath: observerManagerPrefab
       value: 

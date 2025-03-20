@@ -1,4 +1,4 @@
-[System.Serializable]
+ï»¿[System.Serializable]
 public class GameDeckData
 {
     public string deckName;
@@ -7,12 +7,12 @@ public class GameDeckData
     public string preview_imgae_path;
     public string description;
     public string deck_path;
+    public string victory_image_path; // æ–°å¢èƒœåˆ©å›¾ç‰‡è·¯å¾„å­—æ®µ
 }
 
 public class GameDeckDatabase
 {
     public const string DECK_PATH_PREFIX = "Assets/Resources/Decks/";
-
     public static GameDeckData[] Decks = new GameDeckData[]
     {
         new GameDeckData
@@ -21,8 +21,9 @@ public class GameDeckDatabase
             cardCount = 40,
             id = 0,
             preview_imgae_path = "UI/Deck_preview_Image/mygo_pre",
-            description = "¥Ñª¾¦W°ÊµeMyGO¤º®e²Õ¦¨¡A§t¦³¤j¶q¹ê¥Î¹ï¸Ü¡A¬O¯à«Ü¦nÀ³¹ï¦UºØ®ğª^ªºªº¤»Ãä§ÎµP²Õ",
-            deck_path = "Decks/Mygo"
+            description = "ç”±çŸ¥åå‹•ç•«MyGOå…§å®¹çµ„æˆï¼Œå«æœ‰å¤§é‡å¯¦ç”¨å°è©±ï¼Œæ˜¯èƒ½å¾ˆå¥½æ‡‰å°å„ç¨®æ°£æ°›çš„çš„å…­é‚Šå½¢ç‰Œçµ„",
+            deck_path = "Decks/Mygo",
+            victory_image_path = "VictoryAnimations/mygo_victory" // èƒœåˆ©å›¾ç‰‡è·¯å¾„
         },
         new GameDeckData
         {
@@ -30,40 +31,41 @@ public class GameDeckDatabase
             cardCount = 40,
             id = 1,
             preview_imgae_path = "UI/Deck_preview_Image/spongebob_pre",
-            description = "µ£¦~¦^¾Ğ¥d³q®üºøÄ_Ä_¬°¥DÃD¡A¾Ö¦³¦UºØ¶æÁn¦W¨¥¡A¬O¹ï©ó´£¤É¤õÃz­È«D±`¦³À°§UªºµP²Õ",
-            deck_path = "Decks/SpongeBob"
+            description = "ç«¥å¹´å›æ†¶å¡é€šæµ·ç¶¿å¯¶å¯¶ç‚ºä¸»é¡Œï¼Œæ“æœ‰å„ç¨®å—†è²åè¨€ï¼Œæ˜¯å°æ–¼æå‡ç«çˆ†å€¼éå¸¸æœ‰å¹«åŠ©çš„ç‰Œçµ„",
+            deck_path = "Decks/SpongeBob",
+            victory_image_path = "VictoryAnimations/spongebob_victory" // èƒœåˆ©å›¾ç‰‡è·¯å¾„
         },
-        /*
         new GameDeckData
         {
-            deckName = "¤KÂIÀÉ",
+            deckName = "å…«é»æª”",
             cardCount = 40,
             id = 2,
             preview_imgae_path = "UI/Deck_preview_Image/8oclock",
-            description = "¥xÆW¥ÕÄêªº¤KÂIÀÉ±ğ¹Ï",
-            deck_path = "Decks/8oclock"
+            description = "å°ç£ç™½çˆ›çš„å…«é»æª”æ¢—åœ–",
+            deck_path = "Decks/8oclock",
+            victory_image_path = "VictoryAnimations/8oclock_victory" // èƒœåˆ©å›¾ç‰‡è·¯å¾„
         },
         new GameDeckData
         {
-            deckName = "¥xÆW·s»D",
+            deckName = "å°ç£æ–°è",
             cardCount = 40,
             id = 3,
             preview_imgae_path = "UI/Deck_preview_Image/News",
-            description = "¥xÆW¦U¦¡¦U²§ªº·s»DºI¹Ï",
-            deck_path = "Decks/News"
+            description = "å°ç£å„å¼å„ç•°çš„æ–°èæˆªåœ–",
+            deck_path = "Decks/News",
+            victory_image_path = "VictoryAnimations/news_victory" // èƒœåˆ©å›¾ç‰‡è·¯å¾„
         },
         new GameDeckData
         {
-            deckName = "»È»î",
+            deckName = "éŠ€é­‚",
             cardCount = 40,
             id = 4,
             preview_imgae_path = "UI/Deck_preview_Image/GinTama",
-            description = "»È»î",
-            deck_path = "Decks/GinTama"
+            description = "éŠ€é­‚",
+            deck_path = "Decks/GinTama",
+            victory_image_path = "VictoryAnimations/gintama_victory" // èƒœåˆ©å›¾ç‰‡è·¯å¾„
         },
-        */
     };
-
     public GameDeckData GetDeckById(int id)
     {
         return Decks[id];

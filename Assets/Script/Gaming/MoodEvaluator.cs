@@ -100,6 +100,13 @@ public class MoodEvaluator : NetworkBehaviour
     [SerializeField] private UnityEngine.UI.Image opponentMoodIcon;
     [SerializeField] private TurnNotificationManager turnNotificationManager;
 
+    [SerializeField] private AudioManagerClassroom audioManager;
+
+    [Header("Game End UI")]
+    [SerializeField] private Button returnToLobbyButton;
+    [SerializeField] private float buttonShowDelay = 3.0f;
+    private const float AUTO_RETURN_TO_LOBBY_DELAY = 15f;
+
     private Dictionary<string, string> moodIconPaths = new Dictionary<string, string>()
     {
         { "火爆", "UIresource/emoji/angry" },
@@ -115,6 +122,9 @@ public class MoodEvaluator : NetworkBehaviour
 
     [Networked]
     public NetworkDictionary<PlayerRef, MoodState> PlayerMoods { get; }
+
+    [Networked]
+    public NetworkBool IsGameOver { get; private set; }
 
     private struct PlayedCardContext
     {
@@ -141,6 +151,18 @@ public class MoodEvaluator : NetworkBehaviour
         if (turnNotificationManager == null)
         {
             turnNotificationManager = FindObjectOfType<TurnNotificationManager>();
+        }
+
+        if (audioManager == null)
+        {
+            audioManager = FindObjectOfType<AudioManagerClassroom>();
+        }
+
+        if (returnToLobbyButton != null)
+        {
+            returnToLobbyButton.onClick.RemoveAllListeners();
+            returnToLobbyButton.onClick.AddListener(ReturnToLobby);
+            returnToLobbyButton.gameObject.SetActive(false);
         }
 
         gameManager = GameManager.Instance;
@@ -900,10 +922,224 @@ public class MoodEvaluator : NetworkBehaviour
         {
             if (PlayerMoods.TryGet(player, out var mood) && mood.MoodValue >= WINNING_THRESHOLD)
             {
-                Rpc_AnnounceWinner(player, mood.AssignedMood.Value);
+                // Set game over state
+                IsGameOver = true;
+
+                // Pause the turn timer when a player wins
+                if (Object.HasStateAuthority && turnManager != null)
+                {
+                    turnManager.PauseTimerPermanently();
+                }
+
+                Rpc_AnnounceWinnerAndStartAutoReturn(player, mood.AssignedMood.Value);
+
                 return;
             }
         }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_AnnounceWinnerAndStartAutoReturn(PlayerRef winner, NetworkString<_32> mood)
+    {
+        string playerName;
+        bool isLocalPlayerWinner = false;
+
+        if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer))
+        {
+            playerName = winner.PlayerId == 1 ? "玩家一" : "玩家二";
+        }
+        else
+        {
+            isLocalPlayerWinner = winner == Runner.LocalPlayer;
+            playerName = isLocalPlayerWinner ? "你" : "對手";
+        }
+
+        string msg = $"{playerName}成功營造出{mood}的氛圍！\n將在 {AUTO_RETURN_TO_LOBBY_DELAY} 秒後返回大廳...";
+
+        if (winnerText != null)
+        {
+            winnerText.text = msg;
+            winnerText.gameObject.SetActive(true); // 確保文字可見
+        }
+
+        Debug.Log($"遊戲結束！{msg}");
+
+        // Play appropriate music based on winner status
+        if (audioManager == null)
+        {
+            audioManager = FindObjectOfType<AudioManagerClassroom>();
+        }
+
+        if (audioManager != null)
+        {
+            // If observer, just play victory music
+            if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer))
+            {
+                audioManager.PlayGameEndMusic(true);
+            }
+            else
+            {
+                // Play victory music for winner, defeat music for loser
+                audioManager.PlayGameEndMusic(isLocalPlayerWinner);
+            }
+        }
+
+        // Start auto-return to lobby timer
+        StartCoroutine(AutoReturnToLobbyAfterDelay());
+    }
+
+    private IEnumerator AutoReturnToLobbyAfterDelay()
+    {
+        // Wait for the specified delay
+        float remainingTime = AUTO_RETURN_TO_LOBBY_DELAY;
+
+        // Store the base text (only extract once)
+        string baseText = "";
+        if (winnerText != null && !string.IsNullOrEmpty(winnerText.text))
+        {
+            // Extract the first part of the message (before the countdown)
+            int countdownIndex = winnerText.text.IndexOf("\n將在");
+            if (countdownIndex > 0)
+            {
+                baseText = winnerText.text.Substring(0, countdownIndex);
+            }
+        }
+
+        while (remainingTime > 0)
+        {
+            yield return new WaitForSeconds(1f);
+            remainingTime -= 1f;
+
+            // Update the countdown text
+            if (winnerText != null && !string.IsNullOrEmpty(baseText))
+            {
+                winnerText.text = $"{baseText}\n將在 {remainingTime:0} 秒後返回大廳...";
+            }
+        }
+
+        // Auto return to lobby
+        ReturnToLobby();
+    }
+
+
+    public void ReturnToLobby()
+    {
+        if (Runner != null && Runner.IsRunning)
+        {
+            // If we have state authority, initiate the scene change for all clients
+            if (Object.HasStateAuthority)
+            {
+                Rpc_ReturnToLobby();
+            }
+            else
+            {
+                // Otherwise, request the host to change the scene
+                Rpc_RequestReturnToLobby(Runner.LocalPlayer);
+            }
+        }
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void Rpc_RequestReturnToLobby(PlayerRef requestingPlayer)
+    {
+        if (!Object.HasStateAuthority) return;
+
+        Debug.Log($"Player {requestingPlayer} requested to return to lobby");
+        Rpc_ReturnToLobby();
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_ReturnToLobby()
+    {
+        Debug.Log("Returning to lobby");
+        LoadLobbyScene();
+    }
+
+    private async void LoadLobbyScene()
+    {
+        if (Object.HasStateAuthority)
+        {
+            try
+            {
+                // 通知所有客戶端準備進行場景重置
+                Rpc_PrepareForLobbyReturn();
+
+                // 假設大廳是場景索引 0
+                SceneRef lobbyScene = SceneRef.FromIndex(0);
+
+                // 使用 Single 模式完全重新載入場景
+                await Runner.LoadScene(lobbyScene, UnityEngine.SceneManagement.LoadSceneMode.Single);
+
+                Debug.Log("大廳場景成功載入");
+
+                // 通知所有客戶端場景已載入完成
+                Rpc_LobbySceneLoaded();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"載入大廳場景失敗: {e.Message}");
+            }
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_PrepareForLobbyReturn()
+    {
+        Debug.Log("準備返回大廳，清理當前場景資源...");
+
+        // 找到所有需要在場景轉換前清理的物件
+        // 例如：停止所有協程、關閉所有 UI 等
+
+        // 停止所有音效
+        if (audioManager != null && audioManager.musicSource != null)
+        {
+            audioManager.musicSource.Stop();
+        }
+
+        // 清除任何可能干擾新場景的靜態變數或單例引用
+        // 注意：不要清除 NetworkRunner 或其他網路相關的必要組件
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_LobbySceneLoaded()
+    {
+        Debug.Log("大廳場景已載入，初始化大廳物件...");
+
+        StartCoroutine(InitializeLobbyObjects());
+    }
+
+    private IEnumerator InitializeLobbyObjects()
+    {
+        // 等待一幀，確保場景完全載入
+        yield return null;
+
+        // 查找並初始化關鍵的大廳物件
+        DeckSelector deckSelector = FindObjectOfType<DeckSelector>();
+        if (deckSelector != null)
+        {
+            deckSelector.Wait_Runner_Spawned();
+        }
+
+        // 查找 CanvasManager 並確保它正確顯示初始頁面
+        CanvasManager canvasManager = FindObjectOfType<CanvasManager>();
+        if (canvasManager != null)
+        {
+            // 強制刷新 Canvas
+            Canvas[] canvases = FindObjectsOfType<Canvas>();
+            foreach (Canvas canvas in canvases)
+            {
+                canvas.enabled = false;
+                canvas.enabled = true;
+            }
+
+            // 強制顯示初始頁面
+            canvasManager.ShowPage("RuleDescriptCanvas1");
+        }
+    }
+
+    public bool IsGameFinished()
+    {
+        return IsGameOver;
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -917,9 +1153,21 @@ public class MoodEvaluator : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_AnnounceWinner(PlayerRef winner, NetworkString<_32> mood)
     {
+        // Set game over state
+        IsGameOver = true;
+
         string playerName;
-        if (ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer)) playerName = winner.PlayerId == 1 ? "玩家一" : "玩家二";
-        else playerName = winner == Runner.LocalPlayer ? "你" : "對手";
+        bool isLocalPlayerWinner = false;
+
+        if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer))
+        {
+            playerName = winner.PlayerId == 1 ? "玩家一" : "玩家二";
+        }
+        else
+        {
+            isLocalPlayerWinner = winner == Runner.LocalPlayer;
+            playerName = isLocalPlayerWinner ? "你" : "對手";
+        }
         string msg = $"{playerName}成功營造出{mood}的氛圍！";
 
         if (winnerText != null)
@@ -929,6 +1177,26 @@ public class MoodEvaluator : NetworkBehaviour
         }
 
         Debug.Log($"遊戲結束！{msg}");
+
+        // Play appropriate music based on winner status
+        if (audioManager == null)
+        {
+            audioManager = FindObjectOfType<AudioManagerClassroom>();
+        }
+
+        if (audioManager != null)
+        {
+            // If observer, just play victory music
+            if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer))
+            {
+                audioManager.PlayGameEndMusic(true);
+            }
+            else
+            {
+                // Play victory music for winner, defeat music for loser
+                audioManager.PlayGameEndMusic(isLocalPlayerWinner);
+            }
+        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -974,6 +1242,17 @@ public class MoodEvaluator : NetworkBehaviour
             else
             {
                 Debug.LogError($"Failed to load mood icon at path: {resourcePath}");
+            }
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (audioManager != null)
+        {
+            if (audioManager.musicSource != null && audioManager.musicSource.isPlaying)
+            {
+                audioManager.musicSource.Stop();
             }
         }
     }
