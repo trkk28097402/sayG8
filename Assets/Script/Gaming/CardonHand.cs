@@ -23,6 +23,7 @@ public class CardOnHand : NetworkBehaviour
     private CardInteraction currentSelectedCard;
     private CardInteraction currentHoveredCard;
     private int currentHoveredIndex = -1; // Track the index of the currently hovered card
+    private bool isFirstKeyPress = true; // Flag to track if this is the first key press
 
     public bool IsInitialized { get; private set; }
 
@@ -88,7 +89,7 @@ public class CardOnHand : NetworkBehaviour
         HandleKeyboardInput();
     }
 
-    // New method to handle keyboard navigation
+    // Updated keyboard input handling to trigger middle card hover on first key press
     private void HandleKeyboardInput()
     {
         // If there are no cards, don't process keyboard input
@@ -98,6 +99,15 @@ public class CardOnHand : NetworkBehaviour
         bool moveLeft = Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow);
         bool moveRight = Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow);
         bool confirmKey = Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+        bool anyKeyPress = moveLeft || moveRight || confirmKey || Input.anyKeyDown;
+
+        // Check if this is the first key press and any key was pressed
+        if (isFirstKeyPress && anyKeyPress)
+        {
+            isFirstKeyPress = false;
+            SelectMiddleCardHover();
+            return; // Return after handling the first key press
+        }
 
         // If a card is selected
         if (currentSelectedCard != null)
@@ -190,6 +200,9 @@ public class CardOnHand : NetworkBehaviour
     {
         Debug.Log("準備抽牌動畫");
         StartCoroutine(DrawInitialCards(cards));
+
+        // Reset first key press flag for the new hand
+        isFirstKeyPress = true;
     }
 
     public void HandleNewCard(NetworkedCardData cardData)
@@ -199,9 +212,6 @@ public class CardOnHand : NetworkBehaviour
         Vector2 startPos = deckPosition.anchoredPosition;
         CreateAndAnimateCard(cardData, startPos, cardsInHand.Count);
         RearrangeCards();
-
-        // 當新卡加入後，等待動畫完成後選擇中間牌為hover狀態
-        StartCoroutine(SelectMiddleCardHoverAfterDelay(drawDuration + 0.1f));
     }
 
     public void HandleCardPlayed(int cardIndex)
@@ -253,8 +263,8 @@ public class CardOnHand : NetworkBehaviour
             cardsInHand.RemoveAt(index);
             RearrangeCards();
 
-            // 重新設置中間牌為hover狀態
-            StartCoroutine(SelectMiddleCardHoverAfterDelay(0.3f));
+            // Reset first key press flag when a card is removed
+            isFirstKeyPress = true;
         }
     }
 
@@ -266,6 +276,9 @@ public class CardOnHand : NetworkBehaviour
         {
             Debug.Log("Drawing new card after play");
             playerStatus.DrawCard();
+
+            // Reset first key press flag when a new card is drawn
+            isFirstKeyPress = true;
         }
     }
 
@@ -288,10 +301,6 @@ public class CardOnHand : NetworkBehaviour
             yield return new WaitForSeconds(drawDelay);
             CreateAndAnimateCard(cards[i], startPos, i);
         }
-
-        // 初始牌抽完後，等待所有動畫完成，然後選擇中間牌為hover狀態
-        yield return new WaitForSeconds(drawDuration + 0.1f);
-        SelectMiddleCardHover();
     }
 
     // 選擇中間牌為hover狀態
@@ -302,7 +311,7 @@ public class CardOnHand : NetworkBehaviour
         // 先重置所有卡牌的hover狀態
         if (currentHoveredCard != null)
         {
-            // 呼叫OnPointerExit重置當前hover狀態
+            // 呼叫SetHoverState重置當前hover狀態
             currentHoveredCard.SetHoverState(false);
             currentHoveredCard = null;
         }
@@ -319,13 +328,6 @@ public class CardOnHand : NetworkBehaviour
                 currentHoveredCard = cardInteraction;
             }
         }
-    }
-
-    // 延遲選擇中間牌為hover狀態
-    private IEnumerator SelectMiddleCardHoverAfterDelay(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        SelectMiddleCardHover();
     }
 
     private void CreateAndAnimateCard(NetworkedCardData cardData, Vector2 startPos, int index)
@@ -461,8 +463,8 @@ public class CardOnHand : NetworkBehaviour
             }
             UpdateCardPositions();
 
-            // 當牌返回手牌區後，等待動畫完成再選擇中間牌為hover狀態
-            StartCoroutine(SelectMiddleCardHoverAfterDelay(0.3f));
+            // Reset first key press flag when a card is returned to hand
+            isFirstKeyPress = true;
         }
     }
 
