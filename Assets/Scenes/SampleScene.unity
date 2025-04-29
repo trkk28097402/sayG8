@@ -1246,7 +1246,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7627752022196963396, guid: d39324f4e6abb534e89ae812f8bbae21, type: 3}
       propertyPath: m_Name
-      value: Observer_Manager
+      value: Observer_Manager_del
+      objectReference: {fileID: 0}
+    - target: {fileID: 7627752022196963396, guid: d39324f4e6abb534e89ae812f8bbae21, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2214,7 +2218,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5886058793865500986, guid: 16c2a7369c34f9f45b8a29a79ed53cb2, type: 3}
       propertyPath: m_Name
-      value: Network_Manager
+      value: Network_Manager_del
+      objectReference: {fileID: 0}
+    - target: {fileID: 5886058793865500986, guid: 16c2a7369c34f9f45b8a29a79ed53cb2, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7937704772368446591, guid: 16c2a7369c34f9f45b8a29a79ed53cb2, type: 3}
       propertyPath: PlayerPrefab
@@ -3802,7 +3810,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8314444310746991137, guid: 4fc0c775a4b2a0d40b53e7bb298ec38f, type: 3}
       propertyPath: m_Name
-      value: GameDeck_Manager
+      value: GameDeck_Manager_del
+      objectReference: {fileID: 0}
+    - target: {fileID: 8314444310746991137, guid: 4fc0c775a4b2a0d40b53e7bb298ec38f, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

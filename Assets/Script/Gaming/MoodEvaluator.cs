@@ -11,6 +11,7 @@ using System.Collections;
 using DG.Tweening;
 using TMPro;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public struct MoodState : INetworkStruct
 {
@@ -88,7 +89,7 @@ public class ClaudeResponse
 
 public class MoodEvaluator : NetworkBehaviour
 {
-    private const float WINNING_THRESHOLD = 100f;
+    private const float WINNING_THRESHOLD = 10f; // 勝利條件
     private const string CLAUDE_URL = "https://api.anthropic.com/v1/messages";
 
     [SerializeField] private string apiKey;
@@ -918,10 +919,14 @@ public class MoodEvaluator : NetworkBehaviour
 
     private void CheckWinCondition()
     {
+        Debug.Log("CheckWinCondition called");
+
         foreach (var player in gameManager.GetConnectedPlayers())
         {
             if (PlayerMoods.TryGet(player, out var mood) && mood.MoodValue >= WINNING_THRESHOLD)
             {
+                Debug.Log($"Player {player} won with mood value {mood.MoodValue}");
+
                 // Set game over state
                 IsGameOver = true;
 
@@ -929,13 +934,17 @@ public class MoodEvaluator : NetworkBehaviour
                 if (Object.HasStateAuthority && turnManager != null)
                 {
                     turnManager.PauseTimerPermanently();
+                    Debug.Log("Turn timer paused permanently");
                 }
 
+                Debug.Log($"Announcing winner: {player} with mood: {mood.AssignedMood}");
                 Rpc_AnnounceWinnerAndStartAutoReturn(player, mood.AssignedMood.Value);
 
                 return;
             }
         }
+
+        Debug.Log("No winner found yet");
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -964,29 +973,23 @@ public class MoodEvaluator : NetworkBehaviour
 
         Debug.Log($"遊戲結束！{msg}");
 
-        // Play appropriate music based on winner status
-        if (audioManager == null)
+        // 播放適當的結束音樂...
+
+        // 添加調試日誌，確認協程啟動
+        Debug.Log("啟動自動返回大廳計時器協程");
+
+        // 停止任何之前可能正在運行的協程
+        if (autoReturnCoroutine != null)
         {
-            audioManager = FindObjectOfType<AudioManagerClassroom>();
+            StopCoroutine(autoReturnCoroutine);
         }
 
-        if (audioManager != null)
-        {
-            // If observer, just play victory music
-            if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer))
-            {
-                audioManager.PlayGameEndMusic(true);
-            }
-            else
-            {
-                // Play victory music for winner, defeat music for loser
-                audioManager.PlayGameEndMusic(isLocalPlayerWinner);
-            }
-        }
-
-        // Start auto-return to lobby timer
-        StartCoroutine(AutoReturnToLobbyAfterDelay());
+        // 啟動新的協程並儲存引用
+        autoReturnCoroutine = StartCoroutine(AutoReturnToLobbyAfterDelay());
     }
+
+    // 添加一個字段來儲存協程引用
+    private Coroutine autoReturnCoroutine;
 
     private IEnumerator AutoReturnToLobbyAfterDelay()
     {
@@ -1026,14 +1029,14 @@ public class MoodEvaluator : NetworkBehaviour
     {
         if (Runner != null && Runner.IsRunning)
         {
-            // If we have state authority, initiate the scene change for all clients
+            // 如果我們有狀態權限，為所有客戶端初始化場景更改
             if (Object.HasStateAuthority)
             {
                 Rpc_ReturnToLobby();
             }
             else
             {
-                // Otherwise, request the host to change the scene
+                // 否則，請求主機更改場景
                 Rpc_RequestReturnToLobby(Runner.LocalPlayer);
             }
         }
@@ -1055,31 +1058,166 @@ public class MoodEvaluator : NetworkBehaviour
         LoadLobbyScene();
     }
 
+    private IEnumerator PrepareForLobbyReturn()
+    {
+        Debug.Log("Preparing to return to lobby...");
+
+        // 確保所有客戶端都有時間清理必要的資源
+        CleanupBeforeSceneChange();
+
+        // 等待一幀，確保所有清理操作完成
+        yield return null;
+
+        // 實際進行場景加載
+        LoadLobbyScene();
+    }
+
+    private void CleanupBeforeSceneChange()
+    {
+        Debug.Log("Cleaning up resources before scene change");
+
+        // 停止所有相關協程
+        StopAllCoroutines();
+
+        // 停止所有音效
+        if (audioManager != null && audioManager.musicSource != null)
+        {
+            audioManager.musicSource.Stop();
+        }
+
+        // 清理任何可能的引用
+        if (winnerText != null)
+        {
+            winnerText.gameObject.SetActive(false);
+        }
+
+        // 重置遊戲狀態
+        IsGameOver = false;
+
+        // 通知其他系統清理
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.PrepareForSceneChange();
+        }
+
+        if (TurnManager.Instance != null)
+        {
+            TurnManager.Instance.PrepareForSceneChange();
+        }
+    }
+
+
     private async void LoadLobbyScene()
     {
-        if (Object.HasStateAuthority)
+        try
         {
-            try
+            if (Object == null || !Object.IsValid)
             {
-                // 通知所有客戶端準備進行場景重置
-                Rpc_PrepareForLobbyReturn();
-
-                // 假設大廳是場景索引 0
-                SceneRef lobbyScene = SceneRef.FromIndex(0);
-
-                // 使用 Single 模式完全重新載入場景
-                await Runner.LoadScene(lobbyScene, UnityEngine.SceneManagement.LoadSceneMode.Single);
-
-                Debug.Log("大廳場景成功載入");
-
-                // 通知所有客戶端場景已載入完成
-                Rpc_LobbySceneLoaded();
+                Debug.LogError("Cannot load lobby scene: NetworkObject is null or invalid");
+                return;
             }
-            catch (System.Exception e)
+
+            if (Runner == null)
             {
-                Debug.LogError($"載入大廳場景失敗: {e.Message}");
+                Debug.LogError("Cannot load lobby scene: NetworkRunner is null");
+                return;
             }
+
+            if (!Object.HasStateAuthority)
+            {
+                Debug.Log("Non-authority client waiting for scene change");
+                return;
+            }
+
+            Debug.Log("Authority client is loading lobby scene");
+
+            // 在這裡不要使用 RPC，因為場景加載後可能會導致 NetworkObject 失效
+            // 相反，我們使用更直接的方法通知其他客戶端
+
+            // 假設大廳是場景索引 1
+            SceneRef lobbyScene = SceneRef.FromIndex(1);
+
+            // 使用 Single 模式完全重新載入場景
+            await Runner.LoadScene(lobbyScene, UnityEngine.SceneManagement.LoadSceneMode.Single);
+
+            Debug.Log("大廳場景成功載入");
+
+            // 場景加載完成後，不再呼叫 RPC，因為之前的 NetworkObject 已經不存在
+            // 相反，我們依賴場景加載後的初始化邏輯
         }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"載入大廳場景失敗: {e.Message}\nStack trace: {e.StackTrace}");
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_PrepareForSceneLoad()
+    {
+        Debug.Log("Received notification to prepare for scene load");
+        // 確保 UI 元素顯示加載狀態
+        if (winnerText != null)
+        {
+            winnerText.text = "正在返回大廳...";
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_SceneLoadComplete()
+    {
+        Debug.Log("Scene load complete notification received");
+        StartCoroutine(InitializeLobby());
+    }
+
+    private IEnumerator InitializeLobby()
+    {
+        Debug.Log("Initializing lobby scene");
+
+        // 等待一幀以確保所有對象都已加載
+        yield return null;
+
+        // 等待網絡運行器就緒
+        NetworkRunner runner = FindObjectOfType<NetworkRunner>();
+        float timeout = 0f;
+        while (runner == null && timeout < 5f)
+        {
+            runner = FindObjectOfType<NetworkRunner>();
+            timeout += 0.1f;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        if (runner == null)
+        {
+            Debug.LogError("Could not find NetworkRunner in the scene");
+            yield break;
+        }
+
+        Debug.Log("Found NetworkRunner, initializing DeckSelector");
+
+        // 初始化卡組選擇器
+        DeckSelector deckSelector = FindObjectOfType<DeckSelector>();
+        if (deckSelector != null)
+        {
+            deckSelector.Wait_Runner_Spawned();
+        }
+
+        // 查找 CanvasManager 並確保它顯示正確的頁面
+        CanvasManager canvasManager = FindObjectOfType<CanvasManager>();
+        if (canvasManager != null)
+        {
+            // 強制刷新 Canvas
+            Canvas[] canvases = FindObjectsOfType<Canvas>();
+            foreach (Canvas canvas in canvases)
+            {
+                canvas.enabled = false;
+                canvas.enabled = true;
+            }
+
+            // 設置初始頁面
+            canvasManager.ShowPage("DeckSelectCanvas");
+        }
+
+        Debug.Log("Lobby initialization complete");
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

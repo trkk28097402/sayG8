@@ -772,6 +772,47 @@ public class TurnManager : NetworkBehaviour
         }
     }
 
+    public void PrepareForSceneChange()
+    {
+        Debug.Log("TurnManager preparing for scene change");
+
+        // 停止所有計時器
+        IsTimerRunning = false;
+        localTimerPaused = true;
+
+        // 重置遊戲狀態
+        IsGameStarted = false;
+        NetworkedInitialized = false;
+        HasShownGameStartInfo = false;
+
+        // 清除 UI
+        if (turnText != null) turnText.text = "";
+        if (timerText != null) timerText.text = "";
+        if (firstPlayerAnnouncement != null)
+        {
+            firstPlayerAnnouncement.gameObject.SetActive(false);
+        }
+
+        // 停止所有相關協程
+        StopAllCoroutines();
+    }
+
+    // 場景加載完成後的重新初始化
+    public void ReinitializeAfterSceneLoad()
+    {
+        Debug.Log("Reinitializing TurnManager after scene load");
+
+        // 重新初始化本地狀態
+        localInitialized = false;
+        localTimerPaused = false;
+        hasPlayedWarningSound = false;
+        isMyTurn = false;
+        localRemainingTime = 0f;
+
+        // 重新開始初始化流程
+        StartCoroutine(InitializeAfterSpawn());
+    }
+
     private void OnDestroy()
     {
         if (Instance == this)

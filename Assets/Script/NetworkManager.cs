@@ -19,10 +19,21 @@ public class NetworkRunnerHandler : MonoBehaviour
 public class NetworkManager : MonoBehaviour
 {
     [SerializeField] private GameObject PlayerPrefab;
+    [SerializeField] private GameObject gameDeckManagerPrefab;
+    [SerializeField] private GameObject observerManagerPrefab;
+
     private NetworkRunner _runner;
     private NetworkSceneManagerDefault _sceneManager;
+
     private bool _isRunning = false;
+    private bool _managersSpawned = false;
+    private static bool isReturningFromGame = false;
+    private bool _isInitializingDeckSelectors = false;
+
     public static NetworkManager Instance { get; private set; }
+
+    // 公開getter讓其他組件能夠檢查NetworkRunner
+    public NetworkRunner Runner => _runner;
 
     private IEnumerator WaitForObserverManagerAndRegister(PlayerRef player)
     {
@@ -64,6 +75,8 @@ public class NetworkManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            // 註冊場景加載事件
+            SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else
         {
@@ -71,10 +84,62 @@ public class NetworkManager : MonoBehaviour
         }
     }
 
+    private void OnDestroy()
+    {
+        // 取消註冊場景加載事件
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
     private void Start()
     {
+        Debug.Log("[NetworkManager] Start called");
+
+        if (isReturningFromGame)
+        {
+            Debug.Log("[NetworkManager] Detected return from game, restarting game");
+            isReturningFromGame = false;
+            RestartGame();
+        }
+        else
+        {
+            StartGame();
+        }
+    }
+
+    public void RestartGame()
+    {
+        Debug.Log("[NetworkManager] RestartGame called");
+
+        // 如果已經在運行，先停止
+        if (_isRunning && _runner != null)
+        {
+            Debug.Log("[NetworkManager] Game already running, stopping first");
+            StopGame();
+        }
+
+        // 短暫延遲後啟動遊戲
+        StartCoroutine(DelayedGameStart());
+    }
+
+    private IEnumerator DelayedGameStart()
+    {
+        Debug.Log("[NetworkManager] Delayed game start initiated");
+        yield return new WaitForSeconds(0.5f);
         StartGame();
     }
+
+    public void StopGame()
+    {
+        Debug.Log("[NetworkManager] StopGame called");
+
+        if (_runner != null)
+        {
+            _isRunning = false;
+            _runner.Shutdown();
+            Debug.Log("[NetworkManager] Runner shutdown completed");
+        }
+    }
+
 
     private async void StartGame()
     {
@@ -126,6 +191,13 @@ public class NetworkManager : MonoBehaviour
             else
             {
                 _isRunning = true;
+
+                // 確保只創建一次管理器
+                if (_runner.IsSharedModeMasterClient && !_managersSpawned)
+                {
+                    SpawnNetworkManagers();
+                }
+
                 runner_has_spawned();
                 Debug.Log("Network Runner started successfully");
             }
@@ -137,12 +209,148 @@ public class NetworkManager : MonoBehaviour
         }
     }
 
-    private void runner_has_spawned()
+    private void SpawnNetworkManagers()
     {
-        DeckSelector deckSelector = FindObjectOfType<DeckSelector>();
-        deckSelector.Wait_Runner_Spawned();
+        // 檢查是否已經存在管理器實例
+        GameDeckManager existingDeckManager = FindObjectOfType<GameDeckManager>();
+        ObserverManager existingObserverManager = FindObjectOfType<ObserverManager>();
+
+        // 只在不存在時才創建新的
+        if (existingDeckManager == null && gameDeckManagerPrefab != null)
+        {
+            Debug.Log("正在創建 GameDeckManager");
+            _runner.Spawn(gameDeckManagerPrefab);
+        }
+
+        if (existingObserverManager == null && observerManagerPrefab != null)
+        {
+            Debug.Log("正在創建 ObserverManager");
+            _runner.Spawn(observerManagerPrefab);
+        }
+
+        _managersSpawned = true;
     }
 
+    public static void MarkReturningFromGame()
+    {
+        isReturningFromGame = true;
+        Debug.Log("[NetworkManager] Marked as returning from game");
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        Debug.Log($"[NetworkManager] 場景已加載: {scene.name}, 建立索引: {scene.buildIndex}");
+
+        // 最簡單的方案：場景加載後呼叫一次 runner_has_spawned
+        if (_isRunning && _runner != null)
+        {
+            // 給一點延遲確保所有對象都已加載完成
+            StartCoroutine(CallRunnerHasSpawnedAfterDelay());
+        }
+
+        if (scene.buildIndex == 0 && isReturningFromGame)
+        {
+            Debug.Log("[NetworkManager] 檢測到從遊戲返回到大廳");
+            StartCoroutine(ReInitializeLobbyComponents());
+        }
+    }
+
+    private IEnumerator CallRunnerHasSpawnedAfterDelay()
+    {
+        // 等待一幀確保所有對象都加載完成
+        yield return null;
+
+        // 直接呼叫 runner_has_spawned 來初始化所有 DeckSelector
+        Debug.Log("[NetworkManager] 場景載入後呼叫 runner_has_spawned");
+        runner_has_spawned();
+    }
+
+    private IEnumerator ReInitializeLobbyComponents()
+    {
+        Debug.Log("[NetworkManager] 重新初始化大廳組件");
+
+        // 等待一幀確保所有物件都已創建
+        yield return null;
+
+        // 查找並初始化 DeckSelector
+        DeckSelector[] deckSelectors = FindObjectsOfType<DeckSelector>();
+        foreach (DeckSelector deckSelector in deckSelectors)
+        {
+            if (deckSelector != null)
+            {
+                Debug.Log($"[NetworkManager] 重新初始化 DeckSelector {deckSelector.GetInstanceID()}");
+                deckSelector.Wait_Runner_Spawned();
+            }
+        }
+
+        // 查找 CanvasManager 並確保它顯示初始頁面
+        CanvasManager canvasManager = FindObjectOfType<CanvasManager>();
+        if (canvasManager != null)
+        {
+            Debug.Log("[NetworkManager] 找到 CanvasManager，正在重新初始化");
+            // 強制刷新 Canvas
+            Canvas[] canvases = FindObjectsOfType<Canvas>();
+            foreach (Canvas canvas in canvases)
+            {
+                canvas.enabled = false;
+                canvas.enabled = true;
+            }
+            canvasManager.ForceCanvasRefresh();
+
+            // 顯示初始頁面
+            canvasManager.ShowPage("RuleDescriptionCanvas1");
+        }
+
+        // 如果需要，重置 GameDeckManager
+        if (GameDeckManager.Instance != null)
+        {
+            Debug.Log("[NetworkManager] 重新初始化 GameDeckManager");
+            // 清除之前的卡組選擇
+            foreach (var player in _runner.ActivePlayers)
+            {
+                GameDeckManager.Instance.SetPlayerDeck(player, 0);
+            }
+        }
+
+        isReturningFromGame = false;
+    }
+
+    private void runner_has_spawned()
+    {
+        Debug.Log("[NetworkManager] runner_has_spawned called");
+
+        // 查找所有 DeckSelector 實例
+        DeckSelector[] deckSelectors = FindObjectsOfType<DeckSelector>(true);
+        Debug.Log($"[NetworkManager] Found {deckSelectors.Length} DeckSelector instances");
+
+        foreach (DeckSelector deckSelector in deckSelectors)
+        {
+            if (deckSelector != null)
+            {
+                Debug.Log($"[NetworkManager] Initializing DeckSelector instance {deckSelector.GetInstanceID()}");
+                deckSelector.Wait_Runner_Spawned();
+            }
+        }
+
+        // 查找 CanvasManager 並確保正確頁面顯示
+        //CanvasManager canvasManager = FindObjectOfType<CanvasManager>();
+        //if (canvasManager != null)
+        //{
+        //    Debug.Log("[NetworkManager] Found CanvasManager, showing initial page");
+        //    canvasManager.ShowPage("DeckSelectCanvas");
+        //}
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    public void Rpc_SyncActivePage(string pageName)
+    {
+        CanvasManager canvasManager = FindObjectOfType<CanvasManager>();
+        if (canvasManager != null)
+        {
+            Debug.Log($"RPC received: Showing page {pageName}");
+            canvasManager.ShowPage(pageName);
+        }
+    }
     private class CallbackHandler : INetworkRunnerCallbacks
     {
         private readonly NetworkManager _manager;
@@ -232,6 +440,7 @@ public class NetworkManager : MonoBehaviour
             Debug.Log($"Disconnected from Server: {reason}");
             _localPlayerSpawned = false;
         }
+
 
         public void OnInput(NetworkRunner runner, NetworkInput input) { }
         public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }

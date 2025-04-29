@@ -18,7 +18,7 @@ public class CanvasManager : MonoBehaviour
 
     [Header("Canvas Pages")]
     [SerializeField] private List<CanvasPage> canvasPages = new List<CanvasPage>();
-    [SerializeField] private string initialPageName = "DeckSelectCanvas";
+    [SerializeField] private string initialPageName = "RuleDescriptionCanvas1";
 
     [Header("Enter Key Settings")]
     [Tooltip("按鍵冷卻時間，避免連續觸發")]
@@ -30,6 +30,7 @@ public class CanvasManager : MonoBehaviour
     private void Awake()
     {
         // 初始化所有頁面
+        
         InitializeAllPages();
     }
 
@@ -63,6 +64,7 @@ public class CanvasManager : MonoBehaviour
         {
             if (page.canvasObject != null)
             {
+                
                 // 確保每個頁面的 GameObject 是活動的，以便我們可以設置 CanvasGroup
                 page.canvasObject.SetActive(true);
 
@@ -76,6 +78,7 @@ public class CanvasManager : MonoBehaviour
                 // 設置每個頁面的初始值（不可見和不可交互）
                 page.canvasGroup.alpha = 0f;
                 page.canvasGroup.interactable = false;
+                
                 page.canvasGroup.blocksRaycasts = false;
 
                 // 尋找所有導航按鈕並設置監聽器
@@ -110,6 +113,7 @@ public class CanvasManager : MonoBehaviour
     private void Start()
     {
         // 顯示初始頁面
+        
         ShowPage(initialPageName);
     }
 
@@ -119,8 +123,12 @@ public class CanvasManager : MonoBehaviour
     /// <param name="pageName">要顯示的頁面名稱</param>
     public void ShowPage(string pageName)
     {
-        if (string.IsNullOrEmpty(pageName))
+        //Debug.Log("偵錯1 可以show");
+        if (string.IsNullOrEmpty(pageName)) {
+            Debug.Log($"{pageName} 頁面不存在!");
             return;
+        }
+            
 
         bool foundPage = false;
 
@@ -161,8 +169,9 @@ public class CanvasManager : MonoBehaviour
     private IEnumerator ActivatePageAfterDelay(CanvasPage pageToShow)
     {
         // 等待一幀
-        yield return null;
-
+        //Debug.Log("偵錯2 等待");
+        
+        //Debug.Log("偵錯3 等待完成");
         // 設置所有頁面的可見性
         foreach (var page in canvasPages)
         {
@@ -179,9 +188,11 @@ public class CanvasManager : MonoBehaviour
 
         // 更新當前活動頁面
         currentActivePage = pageToShow;
-
+        //Debug.Log("偵錯4 成功");
         // 頁面更改後刷新UI
         StartCoroutine(ForceRefreshAfterPageChange());
+
+        yield return null;
     }
 
     private IEnumerator ForceRefreshAfterPageChange()
@@ -190,12 +201,12 @@ public class CanvasManager : MonoBehaviour
         yield return null;
 
         // 刷新所有Canvas
-        Canvas[] canvases = FindObjectsOfType<Canvas>();
-        foreach (Canvas canvas in canvases)
-        {
-            canvas.enabled = false;
-            canvas.enabled = true;
-        }
+        //Canvas[] canvases = FindObjectsOfType<Canvas>();
+        //foreach (Canvas canvas in canvases)
+        //{
+        //    canvas.enabled = false;
+        //    canvas.enabled = true;
+        //}
 
         // 刷新CanvasGroup
         if (currentActivePage != null && currentActivePage.canvasGroup != null)
@@ -228,6 +239,23 @@ public class CanvasManager : MonoBehaviour
         }
     }
 
+    public IEnumerator EnsurePageVisibility()
+    {
+        // 等待短暫時間
+        yield return new WaitForSeconds(0.5f);
+
+        if (currentActivePage == null)
+        {
+            Debug.LogWarning("沒有活動頁面，強制顯示初始頁面");
+            ShowPage(initialPageName);
+        }
+        else
+        {
+            // 強制刷新當前頁面
+            StartCoroutine(ForceRefreshAfterPageChange());
+        }
+    }
+
     private IEnumerator DelayedDeckSelectorRefresh(DeckSelector deckSelector)
     {
         yield return null;
@@ -256,89 +284,30 @@ public class CanvasManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 在運行時添加新的Canvas頁面
-    /// </summary>
-    public void AddCanvasPage(string pageName, GameObject canvasObject, string nextPageName = "")
+    public void ForceCanvasRefresh()
     {
-        // 檢查頁面是否已存在
-        foreach (var page in canvasPages)
+        Debug.Log("[CanvasManager] 強制刷新 Canvas");
+
+        // 刷新場景中的所有 Canvas
+        Canvas[] canvases = FindObjectsOfType<Canvas>();
+        foreach (Canvas canvas in canvases)
         {
-            if (page.pageName == pageName)
-            {
-                Debug.LogWarning($"Canvas page '{pageName}' already exists!");
-                return;
-            }
+            canvas.enabled = false;
+            canvas.enabled = true;
         }
 
-        // 創建並添加新頁面
-        CanvasPage newPage = new CanvasPage
+        // 重新顯示當前頁面以確保正確狀態
+        if (currentActivePage != null)
         {
-            pageName = pageName,
-            canvasObject = canvasObject,
-            nextPageName = nextPageName,
-            handleEnterKey = false // 默認不處理Enter鍵
-        };
-
-        // 設置CanvasGroup
-        if (canvasObject != null)
-        {
-            // 確保對象處於活動狀態
-            canvasObject.SetActive(true);
-
-            // 獲取或添加CanvasGroup
-            newPage.canvasGroup = canvasObject.GetComponent<CanvasGroup>();
-            if (newPage.canvasGroup == null)
-            {
-                newPage.canvasGroup = canvasObject.AddComponent<CanvasGroup>();
-            }
-
-            // 初始化為不可見
-            newPage.canvasGroup.alpha = 0f;
-            newPage.canvasGroup.interactable = false;
-            newPage.canvasGroup.blocksRaycasts = false;
-
-            // 為新頁面設置按鈕監聽器
-            SetupButtonListeners(newPage);
+            string currentPage = currentActivePage.pageName;
+            Debug.Log($"[CanvasManager] 重新顯示當前頁面: {currentPage}");
+            ShowPage(currentPage);
         }
-
-        canvasPages.Add(newPage);
-
-        Debug.Log($"Added new canvas page: {pageName}");
-    }
-
-    /// <summary>
-    /// 更新Canvas頁面的下一頁
-    /// </summary>
-    public void SetNextPage(string pageName, string nextPageName)
-    {
-        foreach (var page in canvasPages)
+        else
         {
-            if (page.pageName == pageName)
-            {
-                page.nextPageName = nextPageName;
-                return;
-            }
+            // 如果沒有活動頁面，顯示初始頁面
+            Debug.Log($"[CanvasManager] 顯示初始頁面: {initialPageName}");
+            ShowPage(initialPageName);
         }
-
-        Debug.LogWarning($"Canvas page '{pageName}' not found!");
-    }
-
-    /// <summary>
-    /// 啟用或禁用頁面的Enter鍵處理
-    /// </summary>
-    public void SetEnterKeyHandling(string pageName, bool enableEnterKey)
-    {
-        foreach (var page in canvasPages)
-        {
-            if (page.pageName == pageName)
-            {
-                page.handleEnterKey = enableEnterKey;
-                Debug.Log($"Set Enter key handling for page '{pageName}' to {enableEnterKey}");
-                return;
-            }
-        }
-
-        Debug.LogWarning($"Canvas page '{pageName}' not found for Enter key setting!");
     }
 }

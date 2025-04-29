@@ -255,6 +255,58 @@ public class GameManager : NetworkBehaviour
         return PlayerRef.None;
     }
 
+    public void PrepareForSceneChange()
+    {
+        Debug.Log("GameManager preparing for scene change");
+
+        // 清理本地字典
+        localPlayerCards.Clear();
+        localPlayerStatuses.Clear();
+
+        // 如果有狀態權限，還要清理網絡字典
+        if (Object.HasStateAuthority)
+        {
+            // 注意：在某些情況下，你可能不想完全清空這些字典
+            // 而是使用更精細的操作來準備下一場遊戲
+            // NetworkedPlayerCards.Clear();
+            // NetworkedPlayerStatuses.Clear();
+        }
+
+        // 重置遊戲狀態
+        GameStarted = false;
+        ConnectedPlayerCount = 0;
+
+        // 通知所有依賴 GameManager 的系統
+        Rpc_NotifySceneChanging();
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_NotifySceneChanging()
+    {
+        Debug.Log("Game Manager notifying all dependent systems of scene change");
+
+        // 可以在這裡實現通知其他系統的邏輯，如果需要的話
+    }
+
+    // 場景加載完成後的初始化
+    public void ReInitializeAfterSceneLoad()
+    {
+        Debug.Log("Re-initializing GameManager after scene load");
+
+        // 重新初始化本地變數
+        localPlayerCards.Clear();
+        localPlayerStatuses.Clear();
+
+        // 如果有狀態權限，重新初始化網絡狀態
+        if (Object.HasStateAuthority)
+        {
+            InitializeGame();
+        }
+
+        // 等待 NetworkRunner 再次準備好並重新註冊玩家
+        StartCoroutine(InitializeAfterSpawn());
+    }
+
     public override void FixedUpdateNetwork()
     {
         // 在這裡處理遊戲狀態更新

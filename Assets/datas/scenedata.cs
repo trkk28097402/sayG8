@@ -14,7 +14,7 @@ public static class GameSceneDatabase
         new GameSceneData
         {
             sceneName = "Classroom",
-            buildIndex = 1,
+            buildIndex = 2,
         },
     };
 }

@@ -17,28 +17,47 @@ public class GameDeckManager : NetworkBehaviour
 
     public override void Spawned()
     {
-        // 網路物件生成時的初始化
+        Debug.Log($"GameDeckManager: Spawned 被調用，Runner: {Runner}, HasStateAuthority: {Object?.HasStateAuthority}");
+
         if (instance == null)
         {
             instance = this;
             DontDestroyOnLoad(gameObject);
 
-            // 如果是主機端，初始化網路變數
-            if (Object.HasStateAuthority)
-            {
-                for (int i = 0; i < DeckIds.Length; i++)
-                {
-                    DeckIds.Set(i, 0);  // 設置預設值
-                }
-            }
+            // 初始化代碼...
 
-            Debug.Log("GameDeckManager 已在網路中初始化完成");
+            Debug.Log("GameDeckManager 已在網絡中初始化完成");
         }
         else if (instance != this)
         {
             Debug.LogWarning("檢測到多個 GameDeckManager 實例，銷毀重複的實例");
-            Destroy(gameObject);
+
+            // 確保安全銷毀
+            if (Object != null && Runner != null)
+            {
+                Runner.Despawn(Object);
+            }
+            else
+            {
+                Destroy(gameObject);
+            }
         }
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        Debug.Log($"GameDeckManager: Despawned 被調用，HasState: {hasState}");
+
+        // 只有當被銷毀的是當前單例時才重置
+        if (instance == this)
+        {
+            instance = null;
+        }
+    }
+
+    public static bool IsValid()
+    {
+        return instance != null && instance.Object != null && instance.Object.IsValid;
     }
 
     public void SetPlayerDeck(PlayerRef playerRef, int deckId)

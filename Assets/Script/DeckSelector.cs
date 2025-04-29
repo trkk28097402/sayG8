@@ -45,6 +45,7 @@ public class DeckSelector : NetworkBehaviour
     private void Awake()
     {
         audioManagerLobby = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManagerLobby>();
+        
     }
 
     // 當此頁面啟用時，檢查輸入
@@ -92,7 +93,7 @@ public class DeckSelector : NetworkBehaviour
             PressSelectedButton();
             lastKeyInputTime = Time.time;
         }
-        print("-----------------------------------"+currentButtonIndex+"--------------------------------------");
+        //print("-----------------------------------"+currentButtonIndex+"--------------------------------------");
     }
 
     // 在按鈕間導航
@@ -235,14 +236,21 @@ public class DeckSelector : NetworkBehaviour
 
     public void Wait_Runner_Spawned()
     {
+        Debug.Log($"[DeckSelector] Wait_Runner_Spawned 被調用，查找 NetworkRunner");
+
+        // 尋找 NetworkRunner
         runner = FindObjectOfType<NetworkRunner>();
         if (runner == null)
         {
-            Debug.LogError("NetworkRunner not found in scene!");
+            Debug.LogError("[DeckSelector] NetworkRunner not found in scene!");
+            // 啟動一個協程來持續尋找 NetworkRunner
+            StartCoroutine(RetryFindNetworkRunner());
             return;
         }
-        Debug.Log($"Runner state: {runner.State}");
 
+        Debug.Log($"[DeckSelector] Found Runner! Runner state: {runner.State}");
+
+        // 確保設置按鈕和加載牌組數據
         SetupButtons();
         LoadDeckData();
 
@@ -252,15 +260,57 @@ public class DeckSelector : NetworkBehaviour
         StartCoroutine(DelayedUpdateDisplay());
     }
 
+    private IEnumerator RetryFindNetworkRunner()
+    {
+        Debug.Log("[DeckSelector] Starting retry coroutine to find NetworkRunner");
+        float retryTime = 0f;
+        float maxRetryTime = 10f; // 最多嘗試10秒
+
+        while (retryTime < maxRetryTime)
+        {
+            yield return new WaitForSeconds(0.5f);
+            retryTime += 0.5f;
+
+            runner = FindObjectOfType<NetworkRunner>();
+            if (runner != null)
+            {
+                Debug.Log($"[DeckSelector] Found NetworkRunner after retrying! Runner state: {runner.State}");
+
+                // 繼續初始化流程
+                SetupButtons();
+                LoadDeckData();
+                isInitialized = true;
+                StartCoroutine(DelayedUpdateDisplay());
+                yield break;
+            }
+        }
+
+        Debug.LogError("[DeckSelector] Failed to find NetworkRunner after multiple attempts");
+    }
+
     // 延遲更新顯示，確保 Canvas 有足夠時間初始化
     private IEnumerator DelayedUpdateDisplay()
     {
-        yield return new WaitForEndOfFrame();
-        UpdateDeckDisplay();
+        Debug.Log("[DeckSelector] Starting delayed update display");
 
-        // 再次更新一次，確保 UI 元素完全更新
-        yield return new WaitForEndOfFrame();
-        ForceRefreshUI();
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            yield return new WaitForSeconds(0.5f);
+            UpdateDeckDisplay();
+
+            // 再次更新，確保 UI 元素完全更新
+            yield return new WaitForSeconds(0.5f);
+            ForceRefreshUI();
+
+            // 檢查 UI 是否成功更新
+            if (deckPreviewImage != null && deckPreviewImage.sprite != null)
+            {
+                Debug.Log("[DeckSelector] UI successfully updated");
+                break;
+            }
+
+            Debug.Log($"[DeckSelector] UI update attempt {attempt + 1} failed, retrying...");
+        }
 
         // 初始化時選中第一個按鈕
         if (navigationButtons.Count > 0)
@@ -269,7 +319,6 @@ public class DeckSelector : NetworkBehaviour
             SetButtonSelected(navigationButtons[currentButtonIndex], true);
         }
     }
-
     private void OnEnable()
     {
         // 如果已經初始化，則在啟用時更新顯示
@@ -402,6 +451,7 @@ public class DeckSelector : NetworkBehaviour
     private void LoadDeckData()
     {
         // 清空舊資料
+        Debug.Log("載入卡組資料");
         availableDecks.Clear();
         previewSprites.Clear();
 
@@ -477,12 +527,14 @@ public class DeckSelector : NetworkBehaviour
     // 強制刷新 UI 元素
     private void ForceRefreshUI()
     {
+        
         if (deckPreviewImage != null)
         {
             // 強制刷新圖片
+            
             deckPreviewImage.enabled = false;
             deckPreviewImage.enabled = true;
-
+            
             // 強制更新 Canvas
             Canvas.ForceUpdateCanvases();
 
@@ -631,5 +683,21 @@ public class DeckSelector : NetworkBehaviour
         if (currentDeckIndex >= 0 && currentDeckIndex < availableDecks.Count)
             return availableDecks[currentDeckIndex].id;
         return -1;
+    }
+
+    public void ResetAndInitialize()
+    {
+        Debug.Log("[DeckSelector] 重置並初始化");
+
+        // 重置狀態
+        currentDeckIndex = 0;
+        isInitialized = false;
+
+        // 清除緩存數據
+        availableDecks.Clear();
+        previewSprites.Clear();
+
+        // 重新運行初始化
+        Wait_Runner_Spawned();
     }
 }

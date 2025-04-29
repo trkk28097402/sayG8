@@ -122,9 +122,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: -5609321221556402741, guid: 74524bc38d96fe640a475c8ed6666730, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 573065622522440575}
-    - targetCorrespondingSourceObject: {fileID: -5609321221556402741, guid: 74524bc38d96fe640a475c8ed6666730, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 3699759387328068032}
     - targetCorrespondingSourceObject: {fileID: -5609321221556402741, guid: 74524bc38d96fe640a475c8ed6666730, type: 3}
       insertIndex: -1
@@ -138,22 +135,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: -5609321221556402741, guid: 74524bc38d96fe640a475c8ed6666730, type: 3}
   m_PrefabInstance: {fileID: 8304152477471035654}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &573065622522440575
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4691051790610027725}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5af19d7af1f9bcf4f92f872ae5cd3274, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  PlayerSpeed: 2
-  JumpForce: 5
-  GravityValue: -9.81
-  Camera: {fileID: 0}
 --- !u!114 &3699759387328068032
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -171,7 +152,6 @@ MonoBehaviour:
   Flags: 262145
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 573065622522440575}
   - {fileID: -290514914111098270}
 --- !u!114 &-290514914111098270
 MonoBehaviour:
