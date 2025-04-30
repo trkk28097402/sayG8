@@ -21,11 +21,7 @@ TextureImporter:
     heightScale: 0.25
     normalMapFilter: 0
     flipGreenChannel: 0
-<<<<<<< HEAD
   isReadable: 1
-=======
-  isReadable: 0
->>>>>>> 57201789fc46a8212d55e79289687abf9771bd41
   streamingMipmaps: 0
   streamingMipmapsPriority: 0
   vTOnly: 0

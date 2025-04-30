@@ -209,13 +209,13 @@ public class CanvasManager : MonoBehaviour
         //}
 
         // 刷新CanvasGroup
-        if (currentActivePage != null && currentActivePage.canvasGroup != null)
-        {
-            // 觸發刷新
-            currentActivePage.canvasGroup.alpha = 0.99f;
-            yield return null;
-            currentActivePage.canvasGroup.alpha = 1f;
-        }
+        //if (currentActivePage != null && currentActivePage.canvasGroup != null)
+        //{
+        //    // 觸發刷新
+        //    currentActivePage.canvasGroup.alpha = 0.99f;
+        //    yield return null;
+        //    currentActivePage.canvasGroup.alpha = 1f;
+        //}
 
         // 強制Canvas更新
         Canvas.ForceUpdateCanvases();
@@ -230,43 +230,26 @@ public class CanvasManager : MonoBehaviour
                 gameReadySystem.OnPageActivated();
             }
 
-            // 檢查是否有DeckSelector並刷新它
-            DeckSelector deckSelector = currentActivePage.canvasObject.GetComponentInChildren<DeckSelector>();
-            if (deckSelector != null && deckSelector.enabled)
-            {
-                StartCoroutine(DelayedDeckSelectorRefresh(deckSelector));
-            }
+            //// 檢查是否有DeckSelector並刷新它
+            //DeckSelector deckSelector = currentActivePage.canvasObject.GetComponentInChildren<DeckSelector>();
+            //if (deckSelector != null && deckSelector.enabled)
+            //{
+            //    StartCoroutine(DelayedDeckSelectorRefresh(deckSelector));
+            //}
         }
     }
 
-    public IEnumerator EnsurePageVisibility()
-    {
-        // 等待短暫時間
-        yield return new WaitForSeconds(0.5f);
-
-        if (currentActivePage == null)
-        {
-            Debug.LogWarning("沒有活動頁面，強制顯示初始頁面");
-            ShowPage(initialPageName);
-        }
-        else
-        {
-            // 強制刷新當前頁面
-            StartCoroutine(ForceRefreshAfterPageChange());
-        }
-    }
-
-    private IEnumerator DelayedDeckSelectorRefresh(DeckSelector deckSelector)
-    {
-        yield return null;
-        // 使用反射調用ForceRefreshUI方法
-        System.Reflection.MethodInfo method = typeof(DeckSelector).GetMethod("ForceRefreshUI",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        if (method != null)
-        {
-            method.Invoke(deckSelector, null);
-        }
-    }
+    //private IEnumerator DelayedDeckSelectorRefresh(DeckSelector deckSelector)
+    //{
+    //    yield return null;
+    //    // 使用反射調用ForceRefreshUI方法
+    //    System.Reflection.MethodInfo method = typeof(DeckSelector).GetMethod("ForceRefreshUI",
+    //        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+    //    if (method != null)
+    //    {
+    //        method.Invoke(deckSelector, null);
+    //    }
+    //}
 
     /// <summary>
     /// 顯示當前頁面中定義的下一頁
@@ -281,33 +264,6 @@ public class CanvasManager : MonoBehaviour
         else
         {
             Debug.LogWarning($"CanvasManager: 無法切換到下一頁。當前頁面: '{(currentActivePage?.pageName ?? "null")}', 下一頁名稱: '{(currentActivePage?.nextPageName ?? "null")}'");
-        }
-    }
-
-    public void ForceCanvasRefresh()
-    {
-        Debug.Log("[CanvasManager] 強制刷新 Canvas");
-
-        // 刷新場景中的所有 Canvas
-        Canvas[] canvases = FindObjectsOfType<Canvas>();
-        foreach (Canvas canvas in canvases)
-        {
-            canvas.enabled = false;
-            canvas.enabled = true;
-        }
-
-        // 重新顯示當前頁面以確保正確狀態
-        if (currentActivePage != null)
-        {
-            string currentPage = currentActivePage.pageName;
-            Debug.Log($"[CanvasManager] 重新顯示當前頁面: {currentPage}");
-            ShowPage(currentPage);
-        }
-        else
-        {
-            // 如果沒有活動頁面，顯示初始頁面
-            Debug.Log($"[CanvasManager] 顯示初始頁面: {initialPageName}");
-            ShowPage(initialPageName);
         }
     }
 }

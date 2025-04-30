@@ -89,7 +89,8 @@ public class ClaudeResponse
 
 public class MoodEvaluator : NetworkBehaviour
 {
-    private const float WINNING_THRESHOLD = 10f; // 勝利條件
+    private const float WINNING_THRESHOLD = 10f; //勝利條件
+
     private const string CLAUDE_URL = "https://api.anthropic.com/v1/messages";
 
     [SerializeField] private string apiKey;
@@ -264,7 +265,6 @@ public class MoodEvaluator : NetworkBehaviour
         // 更新UI和圖標
         UpdateMoodUI(moodValue, targetPlayer);
         UpdateMoodIcon(assignedMood, targetPlayer == Runner.LocalPlayer);
-        UpdatePlayerLabels(isObserver);
     }
 
     private string[] availableMoods = { "火爆", "敷衍", "嘲諷", "理性", "白目", "歡樂" };
@@ -656,6 +656,7 @@ public class MoodEvaluator : NetworkBehaviour
                     string errorResponse = webRequest.downloadHandler?.text ?? "No response body";
                     Debug.LogError($"API request failed: {webRequest.error}\nResponse: {errorResponse}");
                     throw new Exception($"API request failed: {webRequest.error}");
+                    // 要加一個遊戲繼續選項
                 }
             }
         }
@@ -1384,6 +1385,77 @@ public class MoodEvaluator : NetworkBehaviour
         }
     }
 
+    private void Update()
+    {
+        // 檢查是否按下了 P 鍵
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            Debug.Log("強制結束遊戲");
+
+            // 如果為 StateAuthority，直接結束遊戲
+            if (Object.HasStateAuthority)
+            {
+                // 設置遊戲結束狀態
+                IsGameOver = true;
+
+                // 暫停計時器
+                if (turnManager != null)
+                {
+                    turnManager.PauseTimerPermanently();
+                }
+
+                // 通知所有客戶端遊戲被強制結束
+                Rpc_AnnounceForceGameEnd();
+            }
+            else
+            {
+                // 非 StateAuthority 客戶端請求強制結束遊戲
+                Rpc_RequestForceGameEnd(Runner.LocalPlayer);
+            }
+        }
+    }
+
+    // 從非 StateAuthority 客戶端請求強制結束遊戲
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void Rpc_RequestForceGameEnd(PlayerRef requestingPlayer)
+    {
+        if (!Object.HasStateAuthority) return;
+
+        Debug.Log($"玩家 {requestingPlayer} 請求強制結束遊戲");
+
+        // 設置遊戲結束狀態
+        IsGameOver = true;
+
+        // 暫停計時器
+        if (turnManager != null)
+        {
+            turnManager.PauseTimerPermanently();
+        }
+
+        // 通知所有客戶端遊戲被強制結束
+        Rpc_AnnounceForceGameEnd();
+    }
+
+    // 通知所有客戶端遊戲被強制結束
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_AnnounceForceGameEnd()
+    {
+        if (winnerText != null)
+        {
+            winnerText.text = "遊戲已被強制結束！";
+            winnerText.gameObject.SetActive(true);
+        }
+
+        Debug.Log("遊戲已被強制結束！");
+
+        // 啟動返回大廳倒計時
+        if (autoReturnCoroutine != null)
+        {
+            StopCoroutine(autoReturnCoroutine);
+        }
+
+        autoReturnCoroutine = StartCoroutine(AutoReturnToLobbyAfterDelay());
+    }
     private void OnDestroy()
     {
         if (audioManager != null)
@@ -1391,57 +1463,6 @@ public class MoodEvaluator : NetworkBehaviour
             if (audioManager.musicSource != null && audioManager.musicSource.isPlaying)
             {
                 audioManager.musicSource.Stop();
-            }
-        }
-    }
-
-    [SerializeField] private TMPro.TextMeshProUGUI player1Label;
-    [SerializeField] private TMPro.TextMeshProUGUI player2Label;
-
-    private void UpdatePlayerLabels(bool isObserver)
-    {
-
-        // have bug
-        return;
-
-        var players = gameManager.GetConnectedPlayers();
-
-        //Debug.Log($"updatepklayerlabels: {players[0]},{players[1]}");
-
-        if (isObserver || players[0] == Runner.LocalPlayer)
-        {
-            if (player1Label != null)
-            {
-                if (PlayerMoods.TryGet(players[0], out var mood1))
-                {
-                    player1Label.text = $"玩家1 ({mood1.AssignedMood})";
-                }
-            }
-
-            if (player2Label != null)
-            {
-                if (PlayerMoods.TryGet(players[1], out var mood2))
-                {
-                    player2Label.text = $"玩家2 ({mood2.AssignedMood})";
-                }
-            }
-        }
-        else
-        {
-            if (player1Label != null)
-            {
-                if (PlayerMoods.TryGet(players[0], out var mood1))
-                {
-                    player1Label.text = $"玩家1 ({mood1.AssignedMood})";
-                }
-            }
-
-            if (player2Label != null)
-            {
-                if (PlayerMoods.TryGet(players[1], out var mood2))
-                {
-                    player2Label.text = $"玩家2 ({mood2.AssignedMood})";
-                }
             }
         }
     }

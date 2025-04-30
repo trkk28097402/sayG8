@@ -117,16 +117,15 @@ public class NetworkManager : MonoBehaviour
             StopGame();
         }
 
-        // 短暫延遲後啟動遊戲
-        StartCoroutine(DelayedGameStart());
-    }
-
-    private IEnumerator DelayedGameStart()
-    {
-        Debug.Log("[NetworkManager] Delayed game start initiated");
-        yield return new WaitForSeconds(0.5f);
         StartGame();
     }
+
+    //private IEnumerator DelayedGameStart()
+    //{
+    //    Debug.Log("[NetworkManager] Delayed game start initiated");
+    //    yield return new WaitForSeconds(0.5f);
+        
+    //}
 
     public void StopGame()
     {
@@ -165,17 +164,11 @@ public class NetworkManager : MonoBehaviour
             SessionName = "TestRoom",
             Scene = SceneRef.FromIndex(SceneManager.GetActiveScene().buildIndex),
             SceneManager = _sceneManager,
-            PlayerCount = 4,
+            PlayerCount = 4, // 一定要4，不知道為什麼
             DisableNATPunchthrough = true
         };
 
         _runner.ProvideInput = true;
-
-        if (_runner.IsSharedModeMasterClient)
-        {
-            //_runner.Spawn(gameDeckManagerPrefab);
-            //_runner.Spawn(observerManagerPrefab);
-        }
 
         try
         {
@@ -245,7 +238,8 @@ public class NetworkManager : MonoBehaviour
         if (_isRunning && _runner != null)
         {
             // 給一點延遲確保所有對象都已加載完成
-            StartCoroutine(CallRunnerHasSpawnedAfterDelay());
+            runner_has_spawned();
+          //StartCoroutine(CallRunnerHasSpawnedAfterDelay());
         }
 
         if (scene.buildIndex == 0 && isReturningFromGame)
@@ -295,7 +289,6 @@ public class NetworkManager : MonoBehaviour
                 canvas.enabled = false;
                 canvas.enabled = true;
             }
-            canvasManager.ForceCanvasRefresh();
 
             // 顯示初始頁面
             canvasManager.ShowPage("RuleDescriptionCanvas1");

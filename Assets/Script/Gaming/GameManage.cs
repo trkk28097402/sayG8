@@ -266,8 +266,6 @@ public class GameManager : NetworkBehaviour
         // 如果有狀態權限，還要清理網絡字典
         if (Object.HasStateAuthority)
         {
-            // 注意：在某些情況下，你可能不想完全清空這些字典
-            // 而是使用更精細的操作來準備下一場遊戲
             // NetworkedPlayerCards.Clear();
             // NetworkedPlayerStatuses.Clear();
         }
@@ -276,16 +274,6 @@ public class GameManager : NetworkBehaviour
         GameStarted = false;
         ConnectedPlayerCount = 0;
 
-        // 通知所有依賴 GameManager 的系統
-        Rpc_NotifySceneChanging();
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void Rpc_NotifySceneChanging()
-    {
-        Debug.Log("Game Manager notifying all dependent systems of scene change");
-
-        // 可以在這裡實現通知其他系統的邏輯，如果需要的話
     }
 
     // 場景加載完成後的初始化
@@ -309,10 +297,5 @@ public class GameManager : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
-        // 在這裡處理遊戲狀態更新
-        if (Object.HasStateAuthority && GameStarted)
-        {
-            // Debug.Log($"Game in progress with {NetworkedPlayerStatuses.Count} players");
-        }
     }
 }
