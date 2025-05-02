@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using Fusion;
 using System.Collections;
 
-// 修改 DeckSelector 以支援按鈕導航和 Enter 鍵確認
+// 修改 DeckSelector 以支援按鈕導航和 Enter 鍵確認，並使用浮起效果而非變色
 public class DeckSelector : NetworkBehaviour
 {
     [Header("UI Elements")]
@@ -26,9 +26,13 @@ public class DeckSelector : NetworkBehaviour
     private float lastKeyInputTime = 0f;
 
     [Header("Selection Visual Settings")]
-    [SerializeField] private Color selectedTextColor = new Color(0.1f, 0.6f, 1f, 1f); // 選中時的文字顏色（藍色）
-    [SerializeField] private Color normalTextColor = Color.black; // 正常狀態的文字顏色
-    [SerializeField] private Color selectedButtonColor = new Color(1f, 0.92f, 0.4f, 1f); // 選中時的按鈕顏色
+    [SerializeField] private float selectedButtonScale = 1.1f; // 選中時的按鈕縮放
+    [SerializeField] private Vector2 selectedButtonOffset = new Vector2(0, 3f); // 選中時的位移（模擬浮起）
+    [SerializeField] private float selectionAnimationSpeed = 3f; // 選中動畫速度
+
+    // 陰影設定
+    [SerializeField] private Color shadowColor = new Color(0, 0, 0, 0.3f);
+    [SerializeField] private Vector2 shadowOffset = new Vector2(2f, -2f);
 
     private int currentDeckIndex = 0;
     private int currentButtonIndex = 0; // 目前選中的按鈕索引
@@ -39,13 +43,15 @@ public class DeckSelector : NetworkBehaviour
     private bool isInitialized = false;
     private bool isDescriptionOpen = false; // 追蹤描述視窗是否開啟
     private Dictionary<Button, Coroutine> selectionEffects = new Dictionary<Button, Coroutine>();
-    // 儲存按鈕原始文字顏色
-    private Dictionary<Button, Color> originalTextColors = new Dictionary<Button, Color>();
+
+    // 儲存按鈕原始位置和縮放
+    private Dictionary<Button, Vector3> originalPositions = new Dictionary<Button, Vector3>();
+    private Dictionary<Button, Vector3> originalScales = new Dictionary<Button, Vector3>();
+    private Dictionary<Button, Shadow> buttonShadows = new Dictionary<Button, Shadow>();
 
     private void Awake()
     {
         audioManagerLobby = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManagerLobby>();
-        
     }
 
     // 當此頁面啟用時，檢查輸入
@@ -93,7 +99,6 @@ public class DeckSelector : NetworkBehaviour
             PressSelectedButton();
             lastKeyInputTime = Time.time;
         }
-        //print("-----------------------------------"+currentButtonIndex+"--------------------------------------");
     }
 
     // 在按鈕間導航
@@ -136,98 +141,100 @@ public class DeckSelector : NetworkBehaviour
         }
     }
 
-    // 設置按鈕的視覺選中狀態（增加文字變色效果）
+    // 設置按鈕的視覺選中狀態（使用浮起效果）
     private void SetButtonSelected(Button button, bool isSelected)
     {
         if (button == null)
             return;
 
-        // 1. 按鈕脈動效果
+        // 確保我們已經儲存了原始位置和縮放
+        if (!originalPositions.ContainsKey(button))
+        {
+            originalPositions[button] = button.transform.localPosition;
+            originalScales[button] = button.transform.localScale;
+        }
+
+        // 確保按鈕有陰影組件
+        EnsureButtonHasShadow(button);
+
         if (isSelected)
         {
-            // 啟動閃爍效果
-            if (!selectionEffects.ContainsKey(button))
+            // 啟動浮起效果協程
+            if (selectionEffects.ContainsKey(button))
             {
-                selectionEffects[button] = StartCoroutine(PulseEffect(button));
+                StopCoroutine(selectionEffects[button]);
             }
+            selectionEffects[button] = StartCoroutine(ElevationEffect(button));
         }
         else
         {
-            // 停止閃爍效果
+            // 停止浮起效果協程
             if (selectionEffects.ContainsKey(button))
             {
                 StopCoroutine(selectionEffects[button]);
                 selectionEffects.Remove(button);
-
-                // 重置按鈕顏色
-                Image img = button.GetComponent<Image>();
-                if (img != null)
-                {
-                    img.color = Color.white;
-                }
-            }
-        }
-
-        // 2. 文字顏色變化
-        // 尋找按鈕中的所有文字元件
-        Text[] texts = button.GetComponentsInChildren<Text>(true);
-        TextMeshProUGUI[] tmpTexts = button.GetComponentsInChildren<TextMeshProUGUI>(true);
-
-        // 設置 Unity UI Text 顏色
-        foreach (Text text in texts)
-        {
-            if (!originalTextColors.ContainsKey(button) && text != null)
-            {
-                originalTextColors[button] = text.color;
             }
 
-            if (isSelected)
+            // 重置按鈕位置和縮放
+            if (originalPositions.ContainsKey(button))
             {
-                text.color = selectedTextColor;
-                // 可選：設置粗體
-                text.fontStyle = FontStyle.Bold;
-            }
-            else
-            {
-                text.color = originalTextColors.ContainsKey(button) ? originalTextColors[button] : normalTextColor;
-                text.fontStyle = FontStyle.Normal;
-            }
-        }
-
-        // 設置 TextMeshPro 文字顏色
-        foreach (TextMeshProUGUI tmpText in tmpTexts)
-        {
-            if (!originalTextColors.ContainsKey(button) && tmpText != null)
-            {
-                originalTextColors[button] = tmpText.color;
+                button.transform.localPosition = originalPositions[button];
+                button.transform.localScale = originalScales[button];
             }
 
-            if (isSelected)
+            // 重置陰影
+            if (buttonShadows.ContainsKey(button))
             {
-                tmpText.color = selectedTextColor;
-                // 可選：設置粗體
-                tmpText.fontStyle = TMPro.FontStyles.Bold;
-            }
-            else
-            {
-                tmpText.color = originalTextColors.ContainsKey(button) ? originalTextColors[button] : normalTextColor;
-                tmpText.fontStyle = TMPro.FontStyles.Normal;
+                Shadow shadow = buttonShadows[button];
+                shadow.effectDistance = Vector2.zero;
+                shadow.effectColor = new Color(0, 0, 0, 0);
             }
         }
     }
 
-    private IEnumerator PulseEffect(Button button)
+    // 確保按鈕有陰影組件
+    private void EnsureButtonHasShadow(Button button)
     {
-        Image img = button.GetComponent<Image>();
-        if (img == null) yield break;
+        if (!buttonShadows.ContainsKey(button))
+        {
+            Shadow shadow = button.GetComponent<Shadow>();
+            if (shadow == null)
+            {
+                shadow = button.gameObject.AddComponent<Shadow>();
+                shadow.effectColor = new Color(0, 0, 0, 0); // 初始透明
+                shadow.effectDistance = Vector2.zero;
+            }
+            buttonShadows[button] = shadow;
+        }
+    }
 
+    // 按鈕浮起效果協程
+    private IEnumerator ElevationEffect(Button button)
+    {
+        Shadow shadow = buttonShadows[button];
         float time = 0;
 
         while (true)
         {
-            // 在白色和亮黃色之間脈動
-            float pulse = (Mathf.Sin(time * 3f) + 1f) / 2f;
-            img.color = Color.Lerp(Color.white, selectedButtonColor, pulse);
+            // 計算脈動值 (0-1)
+            float pulse = (Mathf.Sin(time * selectionAnimationSpeed) + 1f) / 4f; // 除以4使效果更微妙
+
+            // 應用縮放效果 (原始縮放 + 額外縮放 * 脈動值)
+            Vector3 targetScale = originalScales[button] * (1f + 0.05f * pulse);
+            button.transform.localScale = Vector3.Lerp(button.transform.localScale, targetScale, Time.deltaTime * 10f);
+
+            // 應用位移效果 (原始位置 + 位移 * 脈動值)
+            Vector3 targetPos = originalPositions[button] + new Vector3(0, selectedButtonOffset.y * (0.8f + pulse), 0);
+            button.transform.localPosition = Vector3.Lerp(button.transform.localPosition, targetPos, Time.deltaTime * 10f);
+
+            // 應用陰影效果
+            shadow.effectDistance = shadowOffset * (0.8f + pulse);
+            shadow.effectColor = new Color(
+                shadowColor.r,
+                shadowColor.g,
+                shadowColor.b,
+                shadowColor.a * (0.8f + pulse)
+            );
 
             time += Time.deltaTime;
             yield return null;
@@ -312,13 +319,16 @@ public class DeckSelector : NetworkBehaviour
             Debug.Log($"[DeckSelector] UI update attempt {attempt + 1} failed, retrying...");
         }
 
-        // 初始化時選中第一個按鈕
+        // 初始化時設置當前選中的按鈕索引，但不應用視覺效果
+        // 這樣按鈕都是正常狀態，直到用戶進行導航操作
         if (navigationButtons.Count > 0)
         {
             currentButtonIndex = 0;
-            SetButtonSelected(navigationButtons[currentButtonIndex], true);
+            // 不再自動設置第一個按鈕為選中狀態
+            // SetButtonSelected(navigationButtons[currentButtonIndex], true);
         }
     }
+
     private void OnEnable()
     {
         // 如果已經初始化，則在啟用時更新顯示
@@ -332,7 +342,9 @@ public class DeckSelector : NetworkBehaviour
     {
         // 清空並重新建立導航按鈕列表（按照畫面順序: 左鍵, 確認鍵, 卡組描述, 右鍵）
         navigationButtons.Clear();
-        originalTextColors.Clear(); // 清空原始顏色緩存
+        originalPositions.Clear();
+        originalScales.Clear();
+        buttonShadows.Clear();
 
         if (previousButton != null)
         {
@@ -340,8 +352,8 @@ public class DeckSelector : NetworkBehaviour
             previousButton.onClick.RemoveAllListeners();
             previousButton.onClick.AddListener(() => ChangeDeck(-1));
 
-            // 存儲按鈕文字的原始顏色
-            StoreOriginalTextColors(previousButton);
+            // 存儲按鈕原始位置和縮放
+            StoreOriginalTransform(previousButton);
         }
 
         if (confirmButton != null)
@@ -351,8 +363,8 @@ public class DeckSelector : NetworkBehaviour
             // 確認按鈕現在會呼叫確認卡組並切換到下一頁
             confirmButton.onClick.AddListener(() => ConfirmDeckSelection());
 
-            // 存儲按鈕文字的原始顏色
-            StoreOriginalTextColors(confirmButton);
+            // 存儲按鈕原始位置和縮放
+            StoreOriginalTransform(confirmButton);
         }
 
         if (deckDescriptOpenButton != null)
@@ -361,8 +373,8 @@ public class DeckSelector : NetworkBehaviour
             deckDescriptOpenButton.onClick.RemoveAllListeners();
             deckDescriptOpenButton.onClick.AddListener(() => OpenDescriptPop());
 
-            // 存儲按鈕文字的原始顏色
-            StoreOriginalTextColors(deckDescriptOpenButton);
+            // 存儲按鈕原始位置和縮放
+            StoreOriginalTransform(deckDescriptOpenButton);
         }
 
         if (nextButton != null)
@@ -371,8 +383,8 @@ public class DeckSelector : NetworkBehaviour
             nextButton.onClick.RemoveAllListeners();
             nextButton.onClick.AddListener(() => ChangeDeck(1));
 
-            // 存儲按鈕文字的原始顏色
-            StoreOriginalTextColors(nextButton);
+            // 存儲按鈕原始位置和縮放
+            StoreOriginalTransform(nextButton);
         }
 
         if (deckDescriptCloseButton != null)
@@ -381,8 +393,8 @@ public class DeckSelector : NetworkBehaviour
             deckDescriptCloseButton.onClick.RemoveAllListeners();
             deckDescriptCloseButton.onClick.AddListener(() => CloseDescriptPop());
 
-            // 存儲按鈕文字的原始顏色
-            StoreOriginalTextColors(deckDescriptCloseButton);
+            // 存儲按鈕原始位置和縮放
+            StoreOriginalTransform(deckDescriptCloseButton);
         }
 
         // 初始化所有按鈕為非選中狀態
@@ -392,25 +404,16 @@ public class DeckSelector : NetworkBehaviour
         }
     }
 
-    // 新增：存儲按鈕文字的原始顏色
-    private void StoreOriginalTextColors(Button button)
+    // 新增：存儲按鈕的原始位置和縮放
+    private void StoreOriginalTransform(Button button)
     {
         if (button == null) return;
 
-        // 檢查 Unity UI Text
-        Text text = button.GetComponentInChildren<Text>(true);
-        if (text != null)
-        {
-            originalTextColors[button] = text.color;
-            return;
-        }
+        originalPositions[button] = button.transform.localPosition;
+        originalScales[button] = button.transform.localScale;
 
-        // 檢查 TextMeshPro
-        TextMeshProUGUI tmpText = button.GetComponentInChildren<TextMeshProUGUI>(true);
-        if (tmpText != null)
-        {
-            originalTextColors[button] = tmpText.color;
-        }
+        // 確保按鈕有陰影組件
+        EnsureButtonHasShadow(button);
     }
 
     // 確認卡組選擇的方法，現在會切換到下一頁
@@ -527,14 +530,14 @@ public class DeckSelector : NetworkBehaviour
     // 強制刷新 UI 元素
     private void ForceRefreshUI()
     {
-        
+
         if (deckPreviewImage != null)
         {
             // 強制刷新圖片
-            
+
             deckPreviewImage.enabled = false;
             deckPreviewImage.enabled = true;
-            
+
             // 強制更新 Canvas
             Canvas.ForceUpdateCanvases();
 
@@ -578,7 +581,7 @@ public class DeckSelector : NetworkBehaviour
         isDescriptionOpen = true;
         currentButtonIndex = 4;
         //SetButtonSelected(navigationButtons[currentButtonIndex], false);
-        
+
         // 確保文字在 Pop 顯示後能正確刷新
         //StartCoroutine(ForceRefreshAfterDelay());
     }

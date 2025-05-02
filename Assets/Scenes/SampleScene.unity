@@ -3525,9 +3525,11 @@ MonoBehaviour:
   deckDescriptionText: {fileID: 496782613}
   deckPreviewImage: {fileID: 510859039}
   keyInputCooldown: 0.3
-  selectedTextColor: {r: 0.1, g: 0.6, b: 1, a: 1}
-  normalTextColor: {r: 0, g: 0, b: 0, a: 1}
-  selectedButtonColor: {r: 1, g: 0.92, b: 0.4, a: 1}
+  selectedButtonScale: 1.1
+  selectedButtonOffset: {x: 0, y: 3}
+  selectionAnimationSpeed: 3
+  shadowColor: {r: 0, g: 0, b: 0, a: 0.3}
+  shadowOffset: {x: 2, y: -2}
 --- !u!1 &2072672880
 GameObject:
   m_ObjectHideFlags: 0
@@ -4181,6 +4183,10 @@ PrefabInstance:
     - target: {fileID: 8148432180612105902, guid: 5e1d1487dc0b28f419ffda6a78878261, type: 3}
       propertyPath: canvasPages.Array.data[4].handleEnterKey
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8165476932148474663, guid: 5e1d1487dc0b28f419ffda6a78878261, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -45
       objectReference: {fileID: 0}
     - target: {fileID: 8181672449056421644, guid: 5e1d1487dc0b28f419ffda6a78878261, type: 3}
       propertyPath: SortKey
