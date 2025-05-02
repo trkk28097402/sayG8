@@ -13,9 +13,9 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
     private Vector2 originalPosition;
     private Vector3 originalRotation;
     private Vector3 originalScale;
-    private Vector2 basePosition;    
-    private Vector3 baseRotation;    
-    private Vector3 baseScale;       
+    private Vector2 basePosition;
+    private Vector3 baseRotation;
+    private Vector3 baseScale;
     private bool isHovered = false;
     public bool isSelected = false;
 
@@ -106,23 +106,26 @@ public class CardInteraction : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
     public void ToggleSelected()
     {
-        audioManagerClassroom.PlaySoundEffectClassroom(audioManagerClassroom.CardTouchSound);//yu
+        audioManagerClassroom.PlaySoundEffectClassroom(audioManagerClassroom.CardTouchSound);
+
+        // Toggle selection state
         isSelected = !isSelected;
+
         if (isSelected)
         {
             Canvas canvas = GetComponentInParent<Canvas>();
             if (canvas != null)
             {
-                rectTransform.DOKill(); 
+                rectTransform.DOKill();
                 originalParent = transform.parent;
                 originalPosition = rectTransform.anchoredPosition;
                 originalRotation = rectTransform.eulerAngles;
-                originalScale = rectTransform.localScale; 
+                originalScale = rectTransform.localScale;
 
                 Sequence selectSequence = DOTween.Sequence();
 
                 selectSequence.Append(rectTransform.DOAnchorPos(new Vector2(0, 200), 0.3f).SetEase(Ease.OutCubic));
-                selectSequence.Join(rectTransform.DOScale(Vector3.one * 1.5f, 0.3f).SetEase(Ease.OutCubic)); 
+                selectSequence.Join(rectTransform.DOScale(Vector3.one * 1.5f, 0.3f).SetEase(Ease.OutCubic));
                 selectSequence.Join(rectTransform.DORotate(Vector3.zero, 0.3f).SetEase(Ease.OutCubic));
 
                 var cardOnHand = originalParent.GetComponent<CardOnHand>();

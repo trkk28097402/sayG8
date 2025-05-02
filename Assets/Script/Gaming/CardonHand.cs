@@ -109,12 +109,30 @@ public class CardOnHand : NetworkBehaviour
             return; // Return after handling the first key press
         }
 
-        // If a card is selected
-        if (currentSelectedCard != null)
+        // If a card is currently hovered but not selected
+        if (currentHoveredCard != null && !currentHoveredCard.isSelected)
         {
             if (confirmKey)
             {
-                // Only play the card on second Enter press
+                // Select the card (not play it)
+                currentHoveredCard.ToggleSelected();
+                return;
+            }
+            else if (moveLeft || moveRight)
+            {
+                // Move hover to appropriate card
+                int newIndex = moveLeft
+                    ? (currentHoveredIndex - 1 + cardsInHand.Count) % cardsInHand.Count
+                    : (currentHoveredIndex + 1) % cardsInHand.Count;
+                SetHoverCardByIndex(newIndex);
+            }
+        }
+        // If a card is already selected
+        else if (currentSelectedCard != null)
+        {
+            if (confirmKey)
+            {
+                // Only play the card on second Enter press when it's already selected
                 currentSelectedCard.PlayCard();
                 return;
             }
@@ -131,27 +149,16 @@ public class CardOnHand : NetworkBehaviour
         }
         else
         {
-            // No card is selected
-            if (moveLeft)
+            // No card is selected or hovered
+            if (moveLeft || moveRight)
             {
-                // Move hover left
-                int newIndex = (currentHoveredIndex <= 0)
-                    ? cardsInHand.Count - 1
-                    : currentHoveredIndex - 1;
+                // Move hover left or right
+                int newIndex = (currentHoveredIndex < 0)
+                    ? (moveLeft ? cardsInHand.Count - 1 : 0)  // Default to last or first card
+                    : (moveLeft
+                        ? (currentHoveredIndex - 1 + cardsInHand.Count) % cardsInHand.Count
+                        : (currentHoveredIndex + 1) % cardsInHand.Count);
                 SetHoverCardByIndex(newIndex);
-            }
-            else if (moveRight)
-            {
-                // Move hover right
-                int newIndex = (currentHoveredIndex == cardsInHand.Count - 1 || currentHoveredIndex == -1)
-                    ? 0
-                    : currentHoveredIndex + 1;
-                SetHoverCardByIndex(newIndex);
-            }
-            else if (confirmKey && currentHoveredCard != null)
-            {
-                // Select the currently hovered card on first Enter press
-                currentHoveredCard.ToggleSelected();
             }
         }
     }

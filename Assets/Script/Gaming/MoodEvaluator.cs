@@ -89,7 +89,7 @@ public class ClaudeResponse
 
 public class MoodEvaluator : NetworkBehaviour
 {
-    private const float WINNING_THRESHOLD = 10f; //勝利條件
+    private const float WINNING_THRESHOLD = 100f; //勝利條件
 
     private const string CLAUDE_URL = "https://api.anthropic.com/v1/messages";
 
@@ -107,7 +107,7 @@ public class MoodEvaluator : NetworkBehaviour
     [Header("Game End UI")]
     [SerializeField] private Button returnToLobbyButton;
     [SerializeField] private float buttonShowDelay = 3.0f;
-    private const float AUTO_RETURN_TO_LOBBY_DELAY = 15f;
+    private const float AUTO_RETURN_TO_LOBBY_DELAY = 8f;
 
     private Dictionary<string, string> moodIconPaths = new Dictionary<string, string>()
     {
@@ -983,12 +983,13 @@ public class MoodEvaluator : NetworkBehaviour
 
         Debug.Log($"遊戲結束！{msg}");
 
-        // 播放適當的結束音樂...
+        if (audioManager != null)
+        {
+            audioManager.PlayGameEndMusic(isLocalPlayerWinner);
+        }
 
-        // 添加調試日誌，確認協程啟動
         Debug.Log("啟動自動返回大廳計時器協程");
 
-        // 停止任何之前可能正在運行的協程
         if (autoReturnCoroutine != null)
         {
             StopCoroutine(autoReturnCoroutine);

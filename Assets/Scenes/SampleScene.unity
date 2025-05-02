@@ -272,7 +272,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1628519643195623577, guid: 5e1d1487dc0b28f419ffda6a78878261, type: 3}
   m_PrefabInstance: {fileID: 8627156349341674282}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 8627156349341674283}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
@@ -2485,7 +2485,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u73A9\u5BB6\u88AB\u6703\u96A8\u6A5F\u5206\u914D\u5230\u4E00\u7A2E\u6C23\u6C1B\uFF0C\u7E3D\u5171\u6709\u516D\u7A2E\uFF1A\n\n\u706B\u7206\u3001\u6577\u884D\u3001\u5632\u8AF7\u3001\u7406\u6027\u3001\u767D\u76EE\u3001\u6B61\u6A02\n\n\u6E96\u5099\u597D\u5C31\u6309\u4E0BEnter\u958B\u59CB\u9078\u64C7\u5361\u7D44\u5427\uFF01"
+  m_text: "\u73A9\u5BB6\u88AB\u6703\u96A8\u6A5F\u5206\u914D\u5230\u4E00\u7A2E\u6C23\u6C1B\uFF0C\u7E3D\u5171\u6709\u516D\u7A2E\uFF1A\n\n\u706B\u7206\u3001\u6577\u884D\u3001\u5632\u8AF7\u3001\u7406\u6027\u3001\u767D\u76EE\u3001\u6B61\u6A02\n\n\u6E96\u5099\u597D\u5C31\u6309\u4E0B\u767D\u8272\u6309\u9215\u5427\uFF01"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5393dd856734a1e48b4fb906d2ddbb5a, type: 2}
   m_sharedMaterial: {fileID: -531566713133523888, guid: 5393dd856734a1e48b4fb906d2ddbb5a, type: 2}
@@ -3660,7 +3660,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u7D05\u8272\u6309\u9215\uFF1A\u5411\u5DE6\u5207\u63DB\n\n\u85CD\u8272\u6309\u9215\uFF1A\u5411\u53F3\u5207\u63DB\n\n\u767D\u8272\u6309\u9215\uFF1A\u9078\u5B9A/\u51FA\u724C/Enter"
+  m_text: "\u7D05\u8272\u6309\u9215\uFF1A\u5411\u5DE6\u5207\u63DB\n\n\u85CD\u8272\u6309\u9215\uFF1A\u5411\u53F3\u5207\u63DB\n\n\u767D\u8272\u6309\u9215\uFF1A\u9078\u5B9A/\u51FA\u724C"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5393dd856734a1e48b4fb906d2ddbb5a, type: 2}
   m_sharedMaterial: {fileID: -531566713133523888, guid: 5393dd856734a1e48b4fb906d2ddbb5a, type: 2}
@@ -4251,7 +4251,28 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4687515591379886669, guid: 5e1d1487dc0b28f419ffda6a78878261, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2034413863}
+    - targetCorrespondingSourceObject: {fileID: 551796002405559868, guid: 5e1d1487dc0b28f419ffda6a78878261, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8627156349341674284}
   m_SourcePrefab: {fileID: 100100000, guid: 5e1d1487dc0b28f419ffda6a78878261, type: 3}
+--- !u!1 &8627156349341674283 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 551796002405559868, guid: 5e1d1487dc0b28f419ffda6a78878261, type: 3}
+  m_PrefabInstance: {fileID: 8627156349341674282}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8627156349341674284
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8627156349341674283}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1437fc081f0461d40a6a2e420c55b492, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetPageName: DeckSelectCanvas
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
