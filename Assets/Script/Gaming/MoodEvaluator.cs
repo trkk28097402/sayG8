@@ -143,6 +143,7 @@ public class MoodEvaluator : NetworkBehaviour
     private TurnManager turnManager;
 
     [SerializeField] private TMPro.TextMeshProUGUI winnerText;
+    [SerializeField] private Image winningImage;
     [SerializeField] private TMPro.TextMeshProUGUI analysisText; // 用於顯示分析結果的UI文字
 
     public override void Spawned()
@@ -240,6 +241,10 @@ public class MoodEvaluator : NetworkBehaviour
         if (winnerText != null)
         {
             winnerText.gameObject.SetActive(false);
+        }
+        if (winningImage != null)
+        {
+            winningImage.gameObject.SetActive(false);
         }
         if (analysisText != null)
         {
@@ -971,6 +976,10 @@ public class MoodEvaluator : NetworkBehaviour
             winnerText.text = msg;
             winnerText.gameObject.SetActive(true); // 確保文字可見
         }
+        if (winningImage != null)
+        {
+            winningImage.gameObject.SetActive(true);
+        }
 
         Debug.Log($"遊戲結束！{msg}");
 
@@ -1090,6 +1099,10 @@ public class MoodEvaluator : NetworkBehaviour
         if (winnerText != null)
         {
             winnerText.gameObject.SetActive(false);
+        }
+        if (winningImage != null)
+        {
+            winningImage.gameObject.SetActive(false);
         }
 
         // 重置遊戲狀態
@@ -1314,6 +1327,10 @@ public class MoodEvaluator : NetworkBehaviour
             winnerText.text = msg;
             winnerText.gameObject.SetActive(true); // 確保文字可見
         }
+        if (winningImage != null)
+        {
+            winningImage.gameObject.SetActive(true);
+        }
 
         Debug.Log($"遊戲結束！{msg}");
 
@@ -1444,6 +1461,10 @@ public class MoodEvaluator : NetworkBehaviour
         {
             winnerText.text = "遊戲已被強制結束！";
             winnerText.gameObject.SetActive(true);
+        }
+        if (winningImage != null)
+        {
+            winningImage.gameObject.SetActive(true);
         }
 
         Debug.Log("遊戲已被強制結束！");
