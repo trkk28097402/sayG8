@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,6 +15,7 @@ public class CanvasManager : MonoBehaviour
         [Tooltip("勾選此項，使此頁面可以使用 Enter 鍵跳轉到下一頁")]
         public bool handleEnterKey = false; // 新增：是否處理 Enter 鍵
         [HideInInspector] public CanvasGroup canvasGroup; // 使用 CanvasGroup 控制可見性
+        [HideInInspector] public List<SpriteRenderer> pageSprites = new List<SpriteRenderer>(); // 存儲頁面下所有的 SpriteRenderer
     }
 
     [Header("Canvas Pages")]
@@ -24,18 +26,33 @@ public class CanvasManager : MonoBehaviour
     [Tooltip("按鍵冷卻時間，避免連續觸發")]
     [SerializeField] private float inputCooldown = 0.3f;
 
+    [Header("Inactivity Settings")]
+    [Tooltip("無操作自動跳回第一頁的時間（秒）")]
+
     private CanvasPage currentActivePage;
     private float lastInputTime = 0f;
+    private float lastAnyInputTime = 0f; // 追蹤任何輸入的時間
+    private float inactivityTimeout = 90f; // 一分半
 
     private void Awake()
     {
         // 初始化所有頁面
-        
         InitializeAllPages();
+        // 初始化輸入計時器
+        ResetInactivityTimer();
     }
 
     private void Update()
     {
+        // 檢查任何輸入來重置非活躍計時器
+        if (Input.anyKeyDown)
+        {
+            ResetInactivityTimer();
+        }
+
+        // 檢查非活躍時間是否超過設定的閾值
+        CheckInactivityTimeout();
+
         // 檢查當前頁面是否需要處理 Enter 鍵
         if (currentActivePage != null && currentActivePage.handleEnterKey)
         {
@@ -43,10 +60,10 @@ public class CanvasManager : MonoBehaviour
             if (Time.time - lastInputTime < inputCooldown)
                 return;
 
-            // 檢查 DeckSelector 是否存在且活動
-            DeckSelector deckSelector = currentActivePage.canvasObject.GetComponentInChildren<DeckSelector>();
-            if (deckSelector != null && deckSelector.gameObject.activeInHierarchy)
-                return;
+            //// 檢查 DeckSelector 是否存在且活動
+            //DeckSelector deckSelector = currentActivePage.canvasObject.GetComponentInChildren<DeckSelector>();
+            //if (deckSelector != null && deckSelector.gameObject.activeInHierarchy)
+            //    return;
 
             // 處理 Enter 鍵
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
@@ -58,13 +75,32 @@ public class CanvasManager : MonoBehaviour
         }
     }
 
+    // 重置非活躍計時器
+    private void ResetInactivityTimer()
+    {
+        lastAnyInputTime = Time.time;
+    }
+
+    // 檢查非活躍超時
+    private void CheckInactivityTimeout()
+    {
+        // 如果超過設定的閾值且不在初始頁面
+        Debug.Log(Time.time - lastAnyInputTime);
+        if (Time.time - lastAnyInputTime > inactivityTimeout &&
+            (currentActivePage == null || currentActivePage.pageName != initialPageName))
+        {
+            Debug.Log("檢測到無操作超過" + inactivityTimeout + "秒，跳回初始頁面");
+            ShowPage(initialPageName);
+            ResetInactivityTimer(); // 重置計時器
+        }
+    }
+
     private void InitializeAllPages()
     {
         foreach (var page in canvasPages)
         {
             if (page.canvasObject != null)
             {
-                
                 // 確保每個頁面的 GameObject 是活動的，以便我們可以設置 CanvasGroup
                 page.canvasObject.SetActive(true);
 
@@ -78,8 +114,17 @@ public class CanvasManager : MonoBehaviour
                 // 設置每個頁面的初始值（不可見和不可交互）
                 page.canvasGroup.alpha = 0f;
                 page.canvasGroup.interactable = false;
-                
                 page.canvasGroup.blocksRaycasts = false;
+
+                // 尋找並存儲頁面下所有的 SpriteRenderer 組件
+                page.pageSprites.Clear();
+                SpriteRenderer[] sprites = page.canvasObject.GetComponentsInChildren<SpriteRenderer>(true);
+                foreach (SpriteRenderer sprite in sprites)
+                {
+                    page.pageSprites.Add(sprite);
+                    // 初始時禁用所有 Sprite
+                    sprite.enabled = false;
+                }
 
                 // 尋找所有導航按鈕並設置監聽器
                 SetupButtonListeners(page);
@@ -105,6 +150,7 @@ public class CanvasManager : MonoBehaviour
                 // 添加監聽器到按鈕
                 button.onClick.AddListener(() => {
                     ShowPage(navButton.targetPageName);
+                    ResetInactivityTimer(); // 按鈕點擊也重置計時器
                 });
             }
         }
@@ -113,22 +159,19 @@ public class CanvasManager : MonoBehaviour
     private void Start()
     {
         // 顯示初始頁面
-        
         ShowPage(initialPageName);
+        // 初始化時重置計時器
+        ResetInactivityTimer();
     }
 
-    /// <summary>
-    /// 顯示指定的頁面並隱藏其他頁面
-    /// </summary>
-    /// <param name="pageName">要顯示的頁面名稱</param>
     public void ShowPage(string pageName)
     {
         //Debug.Log("偵錯1 可以show");
-        if (string.IsNullOrEmpty(pageName)) {
+        if (string.IsNullOrEmpty(pageName))
+        {
             Debug.Log($"{pageName} 頁面不存在!");
             return;
         }
-            
 
         bool foundPage = false;
 
@@ -150,13 +193,19 @@ public class CanvasManager : MonoBehaviour
             return;
         }
 
-        // 首先禁用所有頁面的交互
+        // 首先禁用所有頁面的交互和圖片
         foreach (var page in canvasPages)
         {
             if (page.canvasObject != null && page.canvasGroup != null)
             {
                 page.canvasGroup.interactable = false;
                 page.canvasGroup.blocksRaycasts = false;
+
+                // 禁用所有頁面的 Sprite
+                foreach (SpriteRenderer sprite in page.pageSprites)
+                {
+                    sprite.enabled = false;
+                }
             }
         }
 
@@ -168,10 +217,6 @@ public class CanvasManager : MonoBehaviour
 
     private IEnumerator ActivatePageAfterDelay(CanvasPage pageToShow)
     {
-        // 等待一幀
-        //Debug.Log("偵錯2 等待");
-        
-        //Debug.Log("偵錯3 等待完成");
         // 設置所有頁面的可見性
         foreach (var page in canvasPages)
         {
@@ -183,12 +228,20 @@ public class CanvasManager : MonoBehaviour
                 page.canvasGroup.alpha = shouldBeActive ? 1f : 0f;
                 page.canvasGroup.interactable = shouldBeActive;
                 page.canvasGroup.blocksRaycasts = shouldBeActive;
+
+                // 如果是當前選中的頁面，啟用其所有 Sprite
+                if (shouldBeActive)
+                {
+                    foreach (SpriteRenderer sprite in page.pageSprites)
+                    {
+                        sprite.enabled = true;
+                    }
+                }
             }
         }
 
         // 更新當前活動頁面
         currentActivePage = pageToShow;
-        //Debug.Log("偵錯4 成功");
         // 頁面更改後刷新UI
         StartCoroutine(ForceRefreshAfterPageChange());
 
@@ -199,23 +252,6 @@ public class CanvasManager : MonoBehaviour
     {
         // 等待一幀，確保UI有時間更新
         yield return null;
-
-        // 刷新所有Canvas
-        //Canvas[] canvases = FindObjectsOfType<Canvas>();
-        //foreach (Canvas canvas in canvases)
-        //{
-        //    canvas.enabled = false;
-        //    canvas.enabled = true;
-        //}
-
-        // 刷新CanvasGroup
-        //if (currentActivePage != null && currentActivePage.canvasGroup != null)
-        //{
-        //    // 觸發刷新
-        //    currentActivePage.canvasGroup.alpha = 0.99f;
-        //    yield return null;
-        //    currentActivePage.canvasGroup.alpha = 1f;
-        //}
 
         // 強制Canvas更新
         Canvas.ForceUpdateCanvases();
@@ -229,37 +265,16 @@ public class CanvasManager : MonoBehaviour
             {
                 gameReadySystem.OnPageActivated();
             }
-
-            //// 檢查是否有DeckSelector並刷新它
-            //DeckSelector deckSelector = currentActivePage.canvasObject.GetComponentInChildren<DeckSelector>();
-            //if (deckSelector != null && deckSelector.enabled)
-            //{
-            //    StartCoroutine(DelayedDeckSelectorRefresh(deckSelector));
-            //}
         }
     }
 
-    //private IEnumerator DelayedDeckSelectorRefresh(DeckSelector deckSelector)
-    //{
-    //    yield return null;
-    //    // 使用反射調用ForceRefreshUI方法
-    //    System.Reflection.MethodInfo method = typeof(DeckSelector).GetMethod("ForceRefreshUI",
-    //        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-    //    if (method != null)
-    //    {
-    //        method.Invoke(deckSelector, null);
-    //    }
-    //}
-
-    /// <summary>
-    /// 顯示當前頁面中定義的下一頁
-    /// </summary>
     public void ShowNextPage()
     {
         if (currentActivePage != null && !string.IsNullOrEmpty(currentActivePage.nextPageName))
         {
             Debug.Log($"CanvasManager: 從 '{currentActivePage.pageName}' 切換到 '{currentActivePage.nextPageName}'");
             ShowPage(currentActivePage.nextPageName);
+            ResetInactivityTimer(); // 頁面切換時重置計時器
         }
         else
         {

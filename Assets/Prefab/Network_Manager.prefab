@@ -62,6 +62,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9160465480d73034d9eab1aa8c9cf1ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerPrefab: {fileID: 4691051790610027725, guid: 2e64815129ffccc42809d8ce637f3a31, type: 3}
+  PlayerPrefab: {fileID: 0}
   gameDeckManagerPrefab: {fileID: 8314444310746991137, guid: 4fc0c775a4b2a0d40b53e7bb298ec38f, type: 3}
   observerManagerPrefab: {fileID: 7627752022196963396, guid: d39324f4e6abb534e89ae812f8bbae21, type: 3}

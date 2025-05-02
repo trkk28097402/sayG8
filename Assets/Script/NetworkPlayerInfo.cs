@@ -96,13 +96,6 @@ public class GameDeckManager : NetworkBehaviour
         }
     }
 
-    /*
-    public PlayerRef GetPlayerRef()
-    {
-        
-    }
-    */
-
     public int GetPlayerDeck(PlayerRef playerRef)
     {
         // 檢查網路物件是否已初始化

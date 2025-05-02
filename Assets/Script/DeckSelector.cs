@@ -5,19 +5,14 @@ using System.Collections.Generic;
 using Fusion;
 using System.Collections;
 
-// 修改 DeckSelector 以支援按鈕導航和 Enter 鍵確認，並使用浮起效果而非變色
 public class DeckSelector : NetworkBehaviour
 {
     [Header("UI Elements")]
     [SerializeField] private Button previousButton;
     [SerializeField] private Button confirmButton; // 確認按鈕
-    [SerializeField] private Button deckDescriptOpenButton;
     [SerializeField] private Button nextButton;
-    [SerializeField] private Button deckDescriptCloseButton;
-    [SerializeField] private GameObject deckDescriptPop;
     [SerializeField] private GameObject panelPop;
     [SerializeField] private TextMeshProUGUI deckNameText;
-    [SerializeField] private TextMeshProUGUI deckDescriptionText;
     [SerializeField] private Image deckPreviewImage;
     AudioManagerLobby audioManagerLobby;
 
@@ -35,13 +30,12 @@ public class DeckSelector : NetworkBehaviour
     [SerializeField] private Vector2 shadowOffset = new Vector2(2f, -2f);
 
     private int currentDeckIndex = 0;
-    private int currentButtonIndex = 0; // 目前選中的按鈕索引
+    private int currentButtonIndex = 1; // 預設選中確認按鈕
     private List<Button> navigationButtons = new List<Button>(); // 按鈕導航列表
     private List<GameDeckData> availableDecks = new List<GameDeckData>();
     private Dictionary<string, Sprite> previewSprites = new Dictionary<string, Sprite>();
     private NetworkRunner runner;
     private bool isInitialized = false;
-    private bool isDescriptionOpen = false; // 追蹤描述視窗是否開啟
     private Dictionary<Button, Coroutine> selectionEffects = new Dictionary<Button, Coroutine>();
 
     // 儲存按鈕原始位置和縮放
@@ -65,80 +59,21 @@ public class DeckSelector : NetworkBehaviour
         if (Time.time - lastKeyInputTime < keyInputCooldown)
             return;
 
-        // 在描述窗口開啟時，只處理關閉描述窗口的輸入
-        /*
-        if (isDescriptionOpen)
-        {
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Escape))
-            {
-                CloseDescriptPop();
-                lastKeyInputTime = Time.time;
-            }
-            return;
-        }
-        */
-
-        // 左箭頭鍵或 A 鍵 - 移動到前一個按鈕
-        if ((Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) && (isDescriptionOpen == false))
+        // 左箭頭鍵或 A 鍵 - 直接切換到前一個卡組
+        if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
         {
             print("------------------------------press A-------------------------");
-            NavigateButtons(-1);
+            ChangeDeck(-1);
             lastKeyInputTime = Time.time;
         }
-        // 右箭頭鍵或 D 鍵 - 移動到下一個按鈕
-        else if ((Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D)) && (isDescriptionOpen == false))
+        // 右箭頭鍵或 D 鍵 - 直接切換到下一個卡組
+        else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
         {
             print("------------------------------press D-------------------------");
-            NavigateButtons(1);
+            ChangeDeck(1);
             lastKeyInputTime = Time.time;
         }
-        // Enter 鍵 - 按下當前選中的按鈕
-        else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-        {
-            print("------------------------------press ENTER-------------------------");
-            PressSelectedButton();
-            lastKeyInputTime = Time.time;
-        }
-    }
-
-    // 在按鈕間導航
-    private void NavigateButtons(int direction)
-    {
-        audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);
-
-        // 取消當前按鈕的視覺選中效果
-        SetButtonSelected(navigationButtons[currentButtonIndex], false);
-
-        // 計算新的按鈕索引
-        currentButtonIndex += direction;
-
-        // 確保索引在有效範圍內
-        if (currentButtonIndex >= navigationButtons.Count - 1)
-        {
-            currentButtonIndex = 0;
-        }
-        else if (currentButtonIndex < 0)
-        {
-            currentButtonIndex = navigationButtons.Count - 2;
-        }
-
-        // 設置新按鈕的視覺選中效果
-        SetButtonSelected(navigationButtons[currentButtonIndex], true);
-    }
-
-    // 按下當前選中的按鈕
-    private void PressSelectedButton()
-    {
-        if (currentButtonIndex >= 0 && currentButtonIndex < navigationButtons.Count)
-        {
-            Button selectedButton = navigationButtons[currentButtonIndex];
-
-            // 模擬按鈕點擊
-            if (selectedButton.interactable)
-            {
-                selectedButton.onClick.Invoke();
-            }
-        }
+        // Enter 鍵檢測已刪除，由其他元件處理
     }
 
     // 設置按鈕的視覺選中狀態（使用浮起效果）
@@ -307,7 +242,6 @@ public class DeckSelector : NetworkBehaviour
 
             // 再次更新，確保 UI 元素完全更新
             yield return new WaitForSeconds(0.5f);
-            ForceRefreshUI();
 
             // 檢查 UI 是否成功更新
             if (deckPreviewImage != null && deckPreviewImage.sprite != null)
@@ -319,13 +253,11 @@ public class DeckSelector : NetworkBehaviour
             Debug.Log($"[DeckSelector] UI update attempt {attempt + 1} failed, retrying...");
         }
 
-        // 初始化時設置當前選中的按鈕索引，但不應用視覺效果
-        // 這樣按鈕都是正常狀態，直到用戶進行導航操作
+        // 初始化時設置當前選中的按鈕為確認按鈕
         if (navigationButtons.Count > 0)
         {
-            currentButtonIndex = 0;
-            // 不再自動設置第一個按鈕為選中狀態
-            // SetButtonSelected(navigationButtons[currentButtonIndex], true);
+            currentButtonIndex = 1; // 確認按鈕索引
+            SetButtonSelected(navigationButtons[currentButtonIndex], true);
         }
     }
 
@@ -340,7 +272,7 @@ public class DeckSelector : NetworkBehaviour
 
     private void SetupButtons()
     {
-        // 清空並重新建立導航按鈕列表（按照畫面順序: 左鍵, 確認鍵, 卡組描述, 右鍵）
+        // 清空並重新建立導航按鈕列表（按照畫面順序: 左鍵, 確認鍵, 右鍵）
         navigationButtons.Clear();
         originalPositions.Clear();
         originalScales.Clear();
@@ -367,16 +299,6 @@ public class DeckSelector : NetworkBehaviour
             StoreOriginalTransform(confirmButton);
         }
 
-        if (deckDescriptOpenButton != null)
-        {
-            navigationButtons.Add(deckDescriptOpenButton);
-            deckDescriptOpenButton.onClick.RemoveAllListeners();
-            deckDescriptOpenButton.onClick.AddListener(() => OpenDescriptPop());
-
-            // 存儲按鈕原始位置和縮放
-            StoreOriginalTransform(deckDescriptOpenButton);
-        }
-
         if (nextButton != null)
         {
             navigationButtons.Add(nextButton);
@@ -387,20 +309,16 @@ public class DeckSelector : NetworkBehaviour
             StoreOriginalTransform(nextButton);
         }
 
-        if (deckDescriptCloseButton != null)
-        {
-            navigationButtons.Add(deckDescriptCloseButton);
-            deckDescriptCloseButton.onClick.RemoveAllListeners();
-            deckDescriptCloseButton.onClick.AddListener(() => CloseDescriptPop());
-
-            // 存儲按鈕原始位置和縮放
-            StoreOriginalTransform(deckDescriptCloseButton);
-        }
-
         // 初始化所有按鈕為非選中狀態
         foreach (var button in navigationButtons)
         {
             SetButtonSelected(button, false);
+        }
+
+        // 初始選中確認按鈕
+        if (navigationButtons.Count > 1)
+        {
+            SetButtonSelected(navigationButtons[1], true);
         }
     }
 
@@ -416,7 +334,7 @@ public class DeckSelector : NetworkBehaviour
         EnsureButtonHasShadow(button);
     }
 
-    // 確認卡組選擇的方法，現在會切換到下一頁
+    // 確認卡組選擇的方法，切換到下一頁
     private void ConfirmDeckSelection()
     {
         audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);
@@ -504,7 +422,6 @@ public class DeckSelector : NetworkBehaviour
 
         // 更新顯示並強制刷新
         UpdateDeckDisplay();
-        StartCoroutine(ForceRefreshAfterDelay());
 
         if (runner != null && runner.IsRunning && runner.LocalPlayer != PlayerRef.None)
         {
@@ -518,82 +435,6 @@ public class DeckSelector : NetworkBehaviour
         {
             Debug.LogWarning("NetworkRunner is not in a valid state for setting player deck.");
         }
-    }
-
-    // 延遲刷新 UI，確保在頁面切換後能正確顯示
-    private IEnumerator ForceRefreshAfterDelay()
-    {
-        yield return new WaitForEndOfFrame();
-        ForceRefreshUI();
-    }
-
-    // 強制刷新 UI 元素
-    private void ForceRefreshUI()
-    {
-
-        if (deckPreviewImage != null)
-        {
-            // 強制刷新圖片
-
-            deckPreviewImage.enabled = false;
-            deckPreviewImage.enabled = true;
-
-            // 強制更新 Canvas
-            Canvas.ForceUpdateCanvases();
-
-            // 如果有父 Canvas，強制重繪
-            Canvas parentCanvas = deckPreviewImage.transform.GetComponentInParent<Canvas>();
-            if (parentCanvas != null)
-            {
-                CanvasGroup canvasGroup = parentCanvas.GetComponent<CanvasGroup>();
-                if (canvasGroup != null)
-                {
-                    // 微調 alpha 值以觸發重繪
-                    float originalAlpha = canvasGroup.alpha;
-                    canvasGroup.alpha = originalAlpha * 0.99f;
-                    canvasGroup.alpha = originalAlpha;
-                }
-            }
-        }
-
-        // 強制更新文字元素
-        if (deckNameText != null)
-        {
-            deckNameText.enabled = false;
-            deckNameText.enabled = true;
-            deckNameText.ForceMeshUpdate();
-        }
-
-        if (deckDescriptionText != null)
-        {
-            deckDescriptionText.enabled = false;
-            deckDescriptionText.enabled = true;
-            deckDescriptionText.ForceMeshUpdate();
-        }
-    }
-
-    private void OpenDescriptPop()
-    {
-        Debug.Log("OpenDescriptPop---------------------------------");
-        audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);
-        panelPop.SetActive(false);
-        deckDescriptPop.SetActive(true);
-        isDescriptionOpen = true;
-        currentButtonIndex = 4;
-        //SetButtonSelected(navigationButtons[currentButtonIndex], false);
-
-        // 確保文字在 Pop 顯示後能正確刷新
-        //StartCoroutine(ForceRefreshAfterDelay());
-    }
-
-    private void CloseDescriptPop()
-    {
-        Debug.Log("CloseDescriptPop----------------------------");
-        audioManagerLobby.PlaySoundEffectLobby(audioManagerLobby.ClickSound);
-        panelPop.SetActive(true);
-        deckDescriptPop.SetActive(false);
-        isDescriptionOpen = false;
-        currentButtonIndex = 2;
     }
 
     private void UpdateDeckDisplay()
@@ -612,13 +453,6 @@ public class DeckSelector : NetworkBehaviour
             deckNameText.text = currentDeck.deckName;
             // 強制更新，確保文字顯示
             deckNameText.ForceMeshUpdate();
-        }
-
-        if (deckDescriptionText != null)
-        {
-            deckDescriptionText.text = currentDeck.description;
-            // 強制更新，確保文字顯示
-            deckDescriptionText.ForceMeshUpdate();
         }
 
         // 更新圖片
@@ -676,9 +510,6 @@ public class DeckSelector : NetworkBehaviour
             if (button != null)
                 button.onClick.RemoveAllListeners();
         }
-
-        if (deckDescriptCloseButton != null)
-            deckDescriptCloseButton.onClick.RemoveAllListeners();
     }
 
     public int GetSelectedDeckId()

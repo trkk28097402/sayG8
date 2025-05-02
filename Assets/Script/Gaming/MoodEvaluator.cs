@@ -463,8 +463,52 @@ public class MoodEvaluator : NetworkBehaviour
             {
                 Rpc_HideAIAnalysisNotification();
             }
+
+            // Handle error and continue the game
+            Rpc_NotifyAIError();
+
+            // Continue the game by resuming turn timer and notifying that evaluation is complete
+            if (Object.HasStateAuthority)
+            {
+                if (turnManager != null)
+                {
+                    turnManager.ResumeTurnTimer();
+                }
+
+                if (playedCardsManager != null)
+                {
+                    playedCardsManager.Rpc_NotifyMoodEvaluationComplete();
+                }
+            }
         }
     }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void Rpc_NotifyAIError()
+    {
+        // Display error message to all clients
+        if (analysisText != null)
+        {
+            bool isObserver = ObserverManager.Instance != null &&
+                             ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
+
+            analysisText.gameObject.SetActive(isObserver);
+            if (isObserver)
+            {
+                analysisText.text = "AI分析當機了！跳過這回合...";
+            }
+        }
+
+        if (responseBG != null)
+        {
+            bool isObserver = ObserverManager.Instance != null &&
+                     ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer);
+            responseBG.SetActive(isObserver);
+        }
+
+        Debug.Log("AI分析當機了！跳過這回合...");
+    }
+
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void Rpc_ShowAIAnalysisNotification()
@@ -637,9 +681,27 @@ public class MoodEvaluator : NetworkBehaviour
                 webRequest.SetRequestHeader("x-api-key", apiKey);
                 webRequest.SetRequestHeader("anthropic-version", anthropicVersion);
 
+                // 設置超時以防止請求卡住太久
+                webRequest.timeout = 15; // 15秒超時
+
                 var operation = webRequest.SendWebRequest();
+
+                // 設置安全超時，防止請求卡住
+                float timeoutSeconds = 20f;
+                float elapsedTime = 0f;
+
                 while (!operation.isDone)
-                    await Task.Yield();
+                {
+                    await Task.Delay(100); // 每100ms檢查一次
+                    elapsedTime += 0.1f;
+
+                    if (elapsedTime >= timeoutSeconds)
+                    {
+                        Debug.LogError("API請求在 " + timeoutSeconds + " 秒後超時");
+                        webRequest.Abort(); // 強制中止請求
+                        throw new TimeoutException("API請求超時");
+                    }
+                }
 
                 if (webRequest.result == UnityWebRequest.Result.Success)
                 {
@@ -647,7 +709,7 @@ public class MoodEvaluator : NetworkBehaviour
                     var response = JsonConvert.DeserializeObject<ClaudeResponse>(webRequest.downloadHandler.text);
                     if (response?.content == null)
                     {
-                        throw new Exception("Empty or invalid API response");
+                        throw new Exception("空或無效的API回應");
                     }
 
                     var textParts = response.content
@@ -661,14 +723,13 @@ public class MoodEvaluator : NetworkBehaviour
                     string errorResponse = webRequest.downloadHandler?.text ?? "No response body";
                     Debug.LogError($"API request failed: {webRequest.error}\nResponse: {errorResponse}");
                     throw new Exception($"API request failed: {webRequest.error}");
-                    // 要加一個遊戲繼續選項
                 }
             }
         }
         catch (Exception ex)
         {
             Debug.LogError($"Error in SendClaudeRequest: {ex.Message}\nStack trace: {ex.StackTrace}");
-            throw;
+            throw; // 重新拋出異常，讓上層的錯誤處理邏輯處理
         }
     }
 
@@ -1301,59 +1362,6 @@ public class MoodEvaluator : NetworkBehaviour
         string playerName = player == Runner.LocalPlayer ? "你" : "對手";
         string changeText = change >= 0 ? $"+{change}" : change.ToString();
         Debug.Log($"{playerName}的{PlayerMoods.Get(player).AssignedMood}氛圍值 {changeText} (當前: {newValue})");
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void Rpc_AnnounceWinner(PlayerRef winner, NetworkString<_32> mood)
-    {
-        // Set game over state
-        IsGameOver = true;
-
-        string playerName;
-        bool isLocalPlayerWinner = false;
-
-        if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer))
-        {
-            playerName = winner.PlayerId == 1 ? "玩家一" : "玩家二";
-        }
-        else
-        {
-            isLocalPlayerWinner = winner == Runner.LocalPlayer;
-            playerName = isLocalPlayerWinner ? "你" : "對手";
-        }
-        string msg = $"{playerName}成功營造出{mood}的氛圍！";
-
-        if (winnerText != null)
-        {
-            winnerText.text = msg;
-            winnerText.gameObject.SetActive(true); // 確保文字可見
-        }
-        if (winningImage != null)
-        {
-            winningImage.gameObject.SetActive(true);
-        }
-
-        Debug.Log($"遊戲結束！{msg}");
-
-        // Play appropriate music based on winner status
-        if (audioManager == null)
-        {
-            audioManager = FindObjectOfType<AudioManagerClassroom>();
-        }
-
-        if (audioManager != null)
-        {
-            // If observer, just play victory music
-            if (ObserverManager.Instance != null && ObserverManager.Instance.IsPlayerObserver(Runner.LocalPlayer))
-            {
-                audioManager.PlayGameEndMusic(true);
-            }
-            else
-            {
-                // Play victory music for winner, defeat music for loser
-                audioManager.PlayGameEndMusic(isLocalPlayerWinner);
-            }
-        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
